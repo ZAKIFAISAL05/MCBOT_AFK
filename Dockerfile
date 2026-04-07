@@ -1,16 +1,21 @@
 FROM node:18
 
-# buat folder kerja
 WORKDIR /usr/src/app
 
-# copy package.json dulu
+# 🔥 INSTALL BUILD TOOLS (INI KUNCI)
+RUN apt-get update && apt-get install -y \
+  python3 \
+  make \
+  g++ \
+  cmake \
+  && rm -rf /var/lib/apt/lists/*
+
 COPY package*.json ./
 
-# install dependencies
 RUN npm install
 
-# copy semua file
 COPY . .
 
-# jalankan bot
+ENV NODE_ENV=production
+
 CMD ["npm", "start"]
