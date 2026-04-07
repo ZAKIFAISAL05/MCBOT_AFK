@@ -1,5 +1,4 @@
 const mineflayer = require('mineflayer');
-const { pathfinder, goals } = require('mineflayer-pathfinder');
 
 const CONFIG = {
   host: 'Server_Partner.aternos.me',
@@ -11,9 +10,9 @@ const CONFIG = {
 
 let retryDelay = 15000;
 const MAX_DELAY = 60000;
-let consecutiveFails = 0;  // 🔥 NEW: Hitung kegagalan beruntun
-const MAX_CONSECUTIVE_FAILS = 5;  // 🔥 NEW: Batas maksimal
-let isStopping = false;  // 🔥 NEW: Flag untuk stop
+let consecutiveFails = 0;
+const MAX_CONSECUTIVE_FAILS = 5;
+let isStopping = false;
 
 process.on('uncaughtException', err => console.log('UNCAUGHT:', err));
 process.on('unhandledRejection', err => console.log('UNHANDLED:', err));
@@ -21,11 +20,11 @@ process.on('unhandledRejection', err => console.log('UNHANDLED:', err));
 // ================= START =================
 function start() {
   if (isStopping) {
-    console.log('🛑 STOPPED: Tidak retry lagi');
+    console.log('🛑 STOPPED');
     return;
   }
   
-  console.log(`⏳ Tunggu server siap (${Math.round(retryDelay/1000)}s)... [Fail: ${consecutiveFails}]`);
+  console.log(`⏳ Wait ${Math.round(retryDelay/1000)}s... [Fails: ${consecutiveFails}]`);
 
   setTimeout(() => {
     createBot();
@@ -40,14 +39,14 @@ function createBot() {
 
   bot.once('spawn', () => {
     console.log('✅ SPAWN SUKSES!');
-    consecutiveFails = 0;  // 🔥 RESET fail counter
-    retryDelay = 15000;    // 🔥 RESET delay
+    consecutiveFails = 0;
+    retryDelay = 15000;
     
     setTimeout(() => {
       console.log('🔐 Login...');
       bot.chat('/register 123456 123456');
       setTimeout(() => bot.chat('/login 123456'), 1000);
-    }, 3000); // kurangi delay
+    }, 3000);
   });
 
   // ================= ANTI AFK =================
@@ -58,18 +57,17 @@ function createBot() {
     }
   }, 30000);
 
-  // ================= DISCONNECT =================
+  // ================= EVENTS =================
   const onEnd = (reason) => {
-    clearInterval(antiAFK);  // 🔥 CLEAR INTERVAL
+    clearInterval(antiAFK);
     console.log('❌ Disconnect:', reason);
     
-    // 🔥 ANALISIS REASON
     if (reason?.includes('socketClosed') || reason?.includes('timeout')) {
       consecutiveFails++;
-      console.log(`⚠️ Server issue detected. Fails: ${consecutiveFails}`);
+      console.log(`⚠️ Server issue. Fails: ${consecutiveFails}`);
       
       if (consecutiveFails >= MAX_CONSECUTIVE_FAILS) {
-        console.log('🚨 MAX FAILS REACHED. STOP RETRY.');
+        console.log('🚨 MAX FAILS. STOP.');
         isStopping = true;
         return;
       }
@@ -82,13 +80,13 @@ function createBot() {
   bot.on('error', (err) => {
     console.log('⚠️ Error:', err.message);
     consecutiveFails++;
-    bot.quit(); // force quit
+    bot.quit();
   });
 
-  // 🔥 KILL BOT setelah 5 menit jika stuck
+  // Auto kill setelah 5 menit
   setTimeout(() => {
     if (bot.entity) {
-      console.log('⏰ Auto kill setelah 5 menit');
+      console.log('⏰ Auto kill 5min');
       bot.quit();
     }
   }, 300000);
@@ -97,28 +95,25 @@ function createBot() {
 // ================= RETRY =================
 function retry() {
   if (consecutiveFails >= MAX_CONSECUTIVE_FAILS || isStopping) {
-    console.log('🛑 STOP RETRY');
+    console.log('🛑 NO MORE RETRY');
     return;
   }
 
-  // 🔥 SMART DELAY
-  const smartDelay = consecutiveFails > 3 ? 45000 : Math.min(retryDelay + 15000, MAX_DELAY);
-  retryDelay = smartDelay;
-
-  console.log(`🔄 Retry ${Math.round(smartDelay/1000)}s... [Fails: ${consecutiveFails}]`);
+  retryDelay = Math.min(retryDelay + 15000, MAX_DELAY);
+  console.log(`🔄 Retry ${Math.round(retryDelay/1000)}s...`);
 
   setTimeout(() => {
     start();
-  }, smartDelay);
+  }, retryDelay);
 }
 
-// ================= MANUAL CONTROL =================
+// Ctrl+C stop
 process.on('SIGINT', () => {
   console.log('\n🛑 Manual stop');
   isStopping = true;
   process.exit(0);
 });
 
-// ================= RUN =================
+// RUN
 console.log('🚀 Bot started. Ctrl+C to stop.');
 start();
