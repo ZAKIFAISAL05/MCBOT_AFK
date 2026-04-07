@@ -1,4 +1,3 @@
-
 const mineflayer = require('mineflayer');
 const { pathfinder, goals } = require('mineflayer-pathfinder');
 
@@ -12,17 +11,25 @@ const CONFIG = {
 
 let retryDelay = 15000;
 const MAX_DELAY = 60000;
+let consecutiveFails = 0;  // 🔥 NEW: Hitung kegagalan beruntun
+const MAX_CONSECUTIVE_FAILS = 5;  // 🔥 NEW: Batas maksimal
+let isStopping = false;  // 🔥 NEW: Flag untuk stop
 
 process.on('uncaughtException', err => console.log('UNCAUGHT:', err));
 process.on('unhandledRejection', err => console.log('UNHANDLED:', err));
 
-// ================= START (DELAY AWAL) =================
+// ================= START =================
 function start() {
-  console.log('⏳ Tunggu server siap dulu (25 detik)...');
+  if (isStopping) {
+    console.log('🛑 STOPPED: Tidak retry lagi');
+    return;
+  }
+  
+  console.log(`⏳ Tunggu server siap (${Math.round(retryDelay/1000)}s)... [Fail: ${consecutiveFails}]`);
 
   setTimeout(() => {
     createBot();
-  }, 25000); // 🔥 INI KUNCI
+  }, retryDelay);
 }
 
 // ================= CREATE BOT =================
@@ -31,22 +38,20 @@ function createBot() {
 
   const bot = mineflayer.createBot(CONFIG);
 
-  // ❌ sementara matikan pathfinder dulu (biar stabil)
-  // bot.loadPlugin(pathfinder);
-
   bot.once('spawn', () => {
-    console.log('✅ Spawn masuk');
-
-    // ⏳ tunggu server stabil dulu
+    console.log('✅ SPAWN SUKSES!');
+    consecutiveFails = 0;  // 🔥 RESET fail counter
+    retryDelay = 15000;    // 🔥 RESET delay
+    
     setTimeout(() => {
       console.log('🔐 Login...');
       bot.chat('/register 123456 123456');
-      bot.chat('/login 123456');
-    }, 15000); // delay login
+      setTimeout(() => bot.chat('/login 123456'), 1000);
+    }, 3000); // kurangi delay
   });
 
   // ================= ANTI AFK =================
-  setInterval(() => {
+  const antiAFK = setInterval(() => {
     if (bot.entity) {
       bot.setControlState('jump', true);
       setTimeout(() => bot.setControlState('jump', false), 300);
@@ -54,28 +59,66 @@ function createBot() {
   }, 30000);
 
   // ================= DISCONNECT =================
-  bot.on('end', (reason) => {
+  const onEnd = (reason) => {
+    clearInterval(antiAFK);  // 🔥 CLEAR INTERVAL
     console.log('❌ Disconnect:', reason);
-
-    if (reason && reason.includes('socketClosed')) {
-      retryDelay = 5000;
+    
+    // 🔥 ANALISIS REASON
+    if (reason?.includes('socketClosed') || reason?.includes('timeout')) {
+      consecutiveFails++;
+      console.log(`⚠️ Server issue detected. Fails: ${consecutiveFails}`);
+      
+      if (consecutiveFails >= MAX_CONSECUTIVE_FAILS) {
+        console.log('🚨 MAX FAILS REACHED. STOP RETRY.');
+        isStopping = true;
+        return;
+      }
     }
-
+    
     retry();
+  };
+
+  bot.on('end', onEnd);
+  bot.on('error', (err) => {
+    console.log('⚠️ Error:', err.message);
+    consecutiveFails++;
+    bot.quit(); // force quit
   });
 
-  bot.on('error', err => console.log('⚠️', err.message));
+  // 🔥 KILL BOT setelah 5 menit jika stuck
+  setTimeout(() => {
+    if (bot.entity) {
+      console.log('⏰ Auto kill setelah 5 menit');
+      bot.quit();
+    }
+  }, 300000);
 }
 
 // ================= RETRY =================
 function retry() {
-  console.log(`🔄 Retry ${retryDelay / 1000}s...`);
+  if (consecutiveFails >= MAX_CONSECUTIVE_FAILS || isStopping) {
+    console.log('🛑 STOP RETRY');
+    return;
+  }
+
+  // 🔥 SMART DELAY
+  const smartDelay = consecutiveFails > 3 ? 45000 : Math.min(retryDelay + 15000, MAX_DELAY);
+  retryDelay = smartDelay;
+
+  console.log(`🔄 Retry ${Math.round(smartDelay/1000)}s... [Fails: ${consecutiveFails}]`);
 
   setTimeout(() => {
-    retryDelay = Math.min(retryDelay + 10000, MAX_DELAY);
-    start(); // 🔥 BALIK KE START (BUKAN createBot)
-  }, retryDelay);
+    start();
+  }, smartDelay);
 }
 
+// ================= MANUAL CONTROL =================
+process.on('SIGINT', () => {
+  console.log('\n🛑 Manual stop');
+  isStopping = true;
+  process.exit(0);
+});
+
 // ================= RUN =================
+console.log('🚀 Bot started. Ctrl+C to stop.');
 start();
