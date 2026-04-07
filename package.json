@@ -1,13 +1,14 @@
 {
-  "name": "ymb-bot",
+  "name": "ymb-assiten-bedrock",
   "version": "1.0.0",
-  "main": "bot_jalan.js",
+  "main": "bot_bedrock.js",
   "scripts": {
-    "start": "node bot_jalan.js"
+    "start": "node bot_bedrock.js"
   },
   "dependencies": {
-    "mineflayer": "^4.20.0",
-    "mineflayer-pathfinder": "^2.4.4",
-    "minecraft-data": "^3.71.0"
+    "bedrock-protocol": "^1.25.0"
+  },
+  "engines": {
+    "node": "18.x"
   }
 }
