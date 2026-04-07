@@ -1,14 +1,16 @@
-FROM node:18-slim
+FROM node:18
 
-# Install library sistem untuk kompilasi modul
-RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
-
+# Tentukan folder kerja
 WORKDIR /usr/src/app
 
+# Salin package.json
 COPY package*.json ./
-RUN npm install --production
 
+# Install semua dependencies (tanpa --production dulu agar lebih stabil saat build)
+RUN npm install
+
+# Salin semua file
 COPY . .
 
-# Jalankan bot dengan perintah node
-CMD [ "node", "bot_jalan.js" ]
+# Jalankan bot
+CMD ["node", "bot_jalan.js"]
