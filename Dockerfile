@@ -1,16 +1,15 @@
-{
-  "name": "ymb-bot",
-  "version": "1.0.0",
-  "main": "bot_jalan.js",
-  "scripts": {
-    "start": "node bot_jalan.js"
-  },
-  "dependencies": {
-    "mineflayer": "^4.20.0",
-    "mineflayer-pathfinder": "^2.4.4",
-    "minecraft-data": "^3.71.0"
-  },
-  "engines": {
-    "node": "18.x"
-  }
-}
+FROM node:18
+
+WORKDIR /usr/src/app
+
+# Copy package.json dulu
+COPY package*.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy semua file
+COPY . .
+
+# Jalankan bot
+CMD ["npm", "start"]
