@@ -4,153 +4,150 @@ const CONFIG = {
   host: 'Server_Partner.aternos.me',
   port: 60725,
   username: 'y.m.b_assiten',
-  version: false,  // auto detect
+  version: false,
   auth: 'offline',
-  connectTimeout: 30000,  // 🔥 30s timeout
-  requestTimeout: 30000
+  connectTimeout: 30000,
+  hideErrors: false,
+  checkTimeoutInterval: 30000
 };
 
-let retryDelay = 20000;  // 🔥 Naikkan initial delay
-const MAX_DELAY = 120000; // 2 menit max
+let retryDelay = 25000;
+const MAX_DELAY = 120000;
 let consecutiveFails = 0;
 const MAX_CONSECUTIVE_FAILS = 5;
 let isStopping = false;
-let currentBot = null;  // 🔥 Track bot instance
+let currentBot = null;
 
-process.on('uncaughtException', err => {
-  console.log('💥 UNCAUGHT:', err.message);
-});
-process.on('unhandledRejection', err => {
-  console.log('💥 UNHANDLED:', err.message);
-});
+process.on('uncaughtException', err => console.log('💥', err.message));
+process.on('unhandledRejection', err => console.log('💥', err.message));
 
 // ================= START =================
 function start() {
-  if (isStopping) {
-    console.log('🛑 STOPPED');
-    return;
-  }
+  if (isStopping) return console.log('🛑 STOPPED');
   
-  console.log(`⏳ Wait ${Math.round(retryDelay/1000)}s... [Fails: ${consecutiveFails}/${MAX_CONSECUTIVE_FAILS}]`);
+  console.log(`⏳ Wait ${Math.round(retryDelay/1000)}s [${consecutiveFails}/${MAX_CONSECUTIVE_FAILS}]`);
 
-  setTimeout(() => {
-    createBot();
-  }, retryDelay);
+  setTimeout(createBot, retryDelay);
 }
 
 // ================= CREATE BOT =================
 function createBot() {
-  console.log('🔌 Connecting to', CONFIG.host, ':', CONFIG.port);
+  console.log('🔌 Connecting...');
   
-  // Kill previous bot if exists
   if (currentBot) {
-    try {
-      currentBot.end();
-    } catch (e) {}
+    try { currentBot.end(); } catch(e){}
     currentBot = null;
   }
 
   currentBot = mineflayer.createBot(CONFIG);
 
-  currentBot.once('login', () => {
-    console.log('✅ LOGIN SUKSES!');
-    consecutiveFails = 0;
-    retryDelay = 20000;
-  });
-
+  // ================= HUMANIZE BEHAVIOR =================
   currentBot.once('spawn', () => {
-    console.log('✅ SPAWN SUKSES!');
+    console.log('✅ SPAWN!');
     
+    // NO JUMP INSTANT - tunggu 10s
     setTimeout(() => {
-      console.log('🔐 Register/Login...');
+      console.log('🔐 Login...');
       currentBot.chat('/register 123456 123456');
-      setTimeout(() => currentBot.chat('/login 123456'), 1500);
-    }, 2000);
+      setTimeout(() => currentBot.chat('/login 123456'), 2000);
+    }, 10000); // 🔥 10s delay
   });
 
-  // ================= ANTI AFK =================
-  let antiAFK;
-  if (currentBot.entity) {
-    antiAFK = setInterval(() => {
-      if (currentBot.entity) {
+  currentBot.on('login', () => console.log('✅ LOGIN!'));
+
+  // ================= GENTLE ANTI-AFK =================
+  let antiAFKInterval;
+  setTimeout(() => {
+    antiAFKInterval = setInterval(humanAntiAFK, 60000); // 🔥 1 menit sekali
+  }, 30000); // Start after 30s
+
+  function humanAntiAFK() {
+    if (!currentBot.entity) return;
+    
+    // Random human-like actions
+    const actions = [
+      () => {
+        currentBot.setControlState('forward', true);
+        setTimeout(() => currentBot.setControlState('forward', false), 500);
+      },
+      () => {
         currentBot.setControlState('jump', true);
-        setTimeout(() => currentBot.setControlState('jump', false), 250);
+        setTimeout(() => currentBot.setControlState('jump', false), 300);
+      },
+      () => {
+        currentBot.look(Math.random() * 2 * Math.PI, 0, false);
+      },
+      () => {
+        currentBot.chat(' .'); // Tiny dot chat
       }
-    }, 25000);  // 25s
+    ];
+    
+    // Random action
+    actions[Math.floor(Math.random() * actions.length)]();
   }
 
   // ================= EVENTS =================
   currentBot.on('end', (reason) => {
-    if (antiAFK) clearInterval(antiAFK);
-    console.log('❌ Disconnect:', reason || 'unknown');
+    if (antiAFKInterval) clearInterval(antiAFKInterval);
+    console.log('❌ End:', reason || 'unknown');
     
-    // Server issues
-    if (reason?.includes('socket') || reason?.includes('timeout') || !reason) {
+    if (reason?.includes('socket') || reason?.includes('timeout')) {
       consecutiveFails++;
-      console.log(`⚠️ Connection fail #${consecutiveFails}`);
-      
       if (consecutiveFails >= MAX_CONSECUTIVE_FAILS) {
-        console.log('🚨 MAX FAILS REACHED. STOPPING.');
+        console.log('🚨 MAX FAILS');
         isStopping = true;
         return;
       }
     }
-    
     retry();
   });
 
   currentBot.on('error', (err) => {
-    console.log('⚠️ Connection Error:', err.message || err.code || 'unknown');
+    console.log('⚠️ Error:', err.message || err.code);
     consecutiveFails++;
-    
-    // 🔥 FIX: Gunakan end() bukan quit()
-    try {
-      if (currentBot) {
-        currentBot.end();
-      }
-    } catch (e) {
-      console.log('⚠️ End failed:', e.message);
-    }
+    try { if (currentBot) currentBot.end(); } catch(e){}
   });
 
   currentBot.on('kicked', (reason) => {
-    console.log('👢 KICKED:', reason);
+    console.log('👢 KICKED:', JSON.stringify(reason));
+    // Parse kick reason
+    if (reason?.translate === 'multiplayer.disconnect.invalid_player_movement') {
+      console.log('🎯 Anti-cheat detected - slowing down...');
+      retryDelay *= 2;
+    }
     retry();
   });
 
-  // Auto restart setelah 10 menit
+  currentBot.on('message', (msg) => {
+    const text = msg.toString();
+    if (text.includes('register') || text.includes('login')) {
+      console.log('📩 Server:', text);
+    }
+  });
+
+  // Stay alive 15 menit max
   setTimeout(() => {
-    console.log('⏰ 10min restart');
+    console.log('⏰ 15min restart');
     if (currentBot) currentBot.end();
-  }, 600000);
+  }, 900000);
 }
 
-// ================= RETRY =================
 function retry() {
-  if (consecutiveFails >= MAX_CONSECUTIVE_FAILS || isStopping) {
-    console.log('🛑 NO MORE RETRY');
+  if (isStopping || consecutiveFails >= MAX_CONSECUTIVE_FAILS) {
+    console.log('🛑 STOP');
     return;
   }
-
-  retryDelay = Math.min(retryDelay * 1.5, MAX_DELAY);  // Exponential backoff
-  console.log(`🔄 Next retry: ${Math.round(retryDelay/1000)}s`);
-
-  setTimeout(() => {
-    start();
-  }, retryDelay);
+  retryDelay = Math.min(retryDelay * 1.3, MAX_DELAY);
+  console.log(`🔄 Retry ${Math.round(retryDelay/1000)}s`);
+  setTimeout(start, retryDelay);
 }
 
-// Graceful shutdown
 process.on('SIGINT', () => {
-  console.log('\n🛑 Shutting down...');
+  console.log('\n🛑 Shutdown');
   isStopping = true;
-  if (currentBot) {
-    currentBot.end();
-  }
+  if (currentBot) currentBot.end();
   process.exit(0);
 });
 
-// ================= RUN =================
-console.log('🚀 Minecraft Bot Started');
-console.log('📡 Server:', CONFIG.host + ':' + CONFIG.port);
+console.log('🚀 Human Bot Started');
 start();
