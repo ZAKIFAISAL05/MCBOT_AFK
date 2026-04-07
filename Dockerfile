@@ -1,16 +1,16 @@
-FROM node:18
-
-# Tentukan folder kerja
-WORKDIR /usr/src/app
-RUN npm install --production --legacy-peer-deps
-# Salin package.json
-COPY package*.json ./
-
-# Install semua dependencies (tanpa --production dulu agar lebih stabil saat build)
-RUN npm install
-
-# Salin semua file
-COPY . .
-
-# Jalankan bot
-CMD ["node", "bot_jalan.js"]
+{
+  "name": "ymb-bot",
+  "version": "1.0.0",
+  "main": "bot_jalan.js",
+  "scripts": {
+    "start": "node bot_jalan.js"
+  },
+  "dependencies": {
+    "mineflayer": "^4.20.0",
+    "mineflayer-pathfinder": "^2.4.4",
+    "minecraft-data": "^3.71.0"
+  },
+  "engines": {
+    "node": "18.x"
+  }
+}
