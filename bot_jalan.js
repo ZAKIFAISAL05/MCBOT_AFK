@@ -1,7 +1,6 @@
 const mineflayer = require('mineflayer');
 const { pathfinder, goals } = require('mineflayer-pathfinder');
 
-// ================= CONFIG =================
 const CONFIG = {
   host: 'Server_Partner.aternos.me',
   port: 60725,
@@ -10,79 +9,69 @@ const CONFIG = {
   auth: 'offline'
 };
 
-const RADIUS_JALAN = 12;
-
-// retry system
-let retryDelay = 15000;
+let retryDelay = 10000;
 const MAX_DELAY = 60000;
 
-// anti crash (WAJIB di Railway)
 process.on('uncaughtException', err => console.log('UNCAUGHT:', err));
 process.on('unhandledRejection', err => console.log('UNHANDLED:', err));
-// ==========================================
 
 function createBot() {
-  console.log(`[${new Date().toLocaleTimeString()}] 🔌 Coba connect ke server...`);
+  console.log('🔌 Connecting...');
 
-  let bot;
-
-  try {
-    bot = mineflayer.createBot({
-      host: CONFIG.host,
-      port: CONFIG.port,
-      username: CONFIG.username,
-      version: CONFIG.version,
-      auth: CONFIG.auth
-    });
-  } catch (err) {
-    console.log('❌ Gagal buat bot:', err.message);
-    return retry();
-  }
-
+  const bot = mineflayer.createBot(CONFIG);
   bot.loadPlugin(pathfinder);
 
-  let spawnPoint = null;
-  let loggedIn = false;
+  let ready = false;
 
   // ================= SPAWN =================
   bot.once('spawn', () => {
-    console.log('✅ BOT MASUK SERVER');
+    console.log('✅ Spawn masuk');
 
-    retryDelay = 15000;
-
-    // ⏳ tunggu server stabil (PENTING buat Aternos)
+    // ❗ JANGAN langsung apa-apa
     setTimeout(() => {
-      console.log('🔐 Coba login...');
-
-      // kirim login / register
-      bot.chat('/register 123456 123456');
+      console.log('🔐 Kirim login...');
       bot.chat('/login 123456');
+    }, 7000);
+  });
 
-    }, 5000);
+  // ================= DETECT SERVER READY =================
+  bot.on('message', (msg) => {
+    const text = msg.toString();
 
-    // tunggu login sukses dulu baru jalan
-    setTimeout(() => {
-      spawnPoint = bot.entity.position.clone();
-      startPatrol(bot, spawnPoint);
-    }, 10000);
+    // kalau sudah login / masuk lobby
+    if (
+      text.toLowerCase().includes('welcome') ||
+      text.toLowerCase().includes('berhasil') ||
+      text.toLowerCase().includes('logged') ||
+      text.toLowerCase().includes('selamat')
+    ) {
+      if (!ready) {
+        ready = true;
+        console.log('🟢 Server READY');
+
+        setTimeout(() => startPatrol(bot), 5000);
+      }
+    }
   });
 
   // ================= PATROL =================
-  function startPatrol(bot, center) {
+  function startPatrol(bot) {
+    const center = bot.entity.position.clone();
+
     const move = () => {
       if (!bot.entity) return;
 
-      const x = center.x + (Math.random() - 0.5) * RADIUS_JALAN * 2;
-      const z = center.z + (Math.random() - 0.5) * RADIUS_JALAN * 2;
+      const x = center.x + (Math.random() - 0.5) * 20;
+      const z = center.z + (Math.random() - 0.5) * 20;
 
       const goal = new goals.GoalNear(x, center.y, z, 1);
       bot.pathfinder.setGoal(goal);
 
-      console.log(`🚶 Jalan ke: ${Math.round(x)}, ${Math.round(z)}`);
+      console.log(`🚶 Jalan ke ${Math.round(x)}, ${Math.round(z)}`);
     };
 
     bot.on('goal_reached', () => {
-      setTimeout(move, 15000 + Math.random() * 5000);
+      setTimeout(move, 15000);
     });
 
     move();
@@ -90,17 +79,17 @@ function createBot() {
 
   // ================= ANTI AFK =================
   setInterval(() => {
-    if (bot && bot.entity) {
+    if (bot.entity && ready) {
       bot.setControlState('jump', true);
-      setTimeout(() => bot.setControlState('jump', false), 500);
+      setTimeout(() => bot.setControlState('jump', false), 300);
     }
   }, 30000);
 
   // ================= DISCONNECT =================
   bot.on('end', (reason) => {
-    console.log(`❌ Disconnect: ${reason}`);
+    console.log('❌ Disconnect:', reason);
 
-    // kalau server belum siap → retry cepat
+    // kalau socketClosed → server belum siap
     if (reason && reason.includes('socketClosed')) {
       retryDelay = 5000;
     }
@@ -108,15 +97,13 @@ function createBot() {
     retry();
   });
 
-  bot.on('error', (err) => {
-    console.log(`⚠️ Error: ${err.message}`);
-  });
+  bot.on('error', err => console.log('⚠️', err.message));
 
   function retry() {
-    console.log(`🔄 Retry dalam ${retryDelay / 1000} detik...`);
+    console.log(`🔄 Retry ${retryDelay / 1000}s...`);
 
     setTimeout(() => {
-      retryDelay = Math.min(retryDelay + 10000, MAX_DELAY);
+      retryDelay = Math.min(retryDelay + 5000, MAX_DELAY);
       createBot();
     }, retryDelay);
   }
