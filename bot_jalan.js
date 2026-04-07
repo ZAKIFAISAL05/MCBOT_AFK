@@ -9,77 +9,44 @@ const CONFIG = {
   auth: 'offline'
 };
 
-let retryDelay = 10000;
+let retryDelay = 15000;
 const MAX_DELAY = 60000;
 
 process.on('uncaughtException', err => console.log('UNCAUGHT:', err));
 process.on('unhandledRejection', err => console.log('UNHANDLED:', err));
 
+// ================= START (DELAY AWAL) =================
+function start() {
+  console.log('⏳ Tunggu server siap dulu (25 detik)...');
+
+  setTimeout(() => {
+    createBot();
+  }, 25000); // 🔥 INI KUNCI
+}
+
+// ================= CREATE BOT =================
 function createBot() {
   console.log('🔌 Connecting...');
 
   const bot = mineflayer.createBot(CONFIG);
-  bot.loadPlugin(pathfinder);
 
-  let ready = false;
+  // ❌ sementara matikan pathfinder dulu (biar stabil)
+  // bot.loadPlugin(pathfinder);
 
-  // ================= SPAWN =================
   bot.once('spawn', () => {
     console.log('✅ Spawn masuk');
 
-    // ❗ JANGAN langsung apa-apa
+    // ⏳ tunggu server stabil dulu
     setTimeout(() => {
-      console.log('🔐 Kirim login...');
+      console.log('🔐 Login...');
+      bot.chat('/register 123456 123456');
       bot.chat('/login 123456');
-    }, 7000);
+    }, 15000); // delay login
   });
-
-  // ================= DETECT SERVER READY =================
-  bot.on('message', (msg) => {
-    const text = msg.toString();
-
-    // kalau sudah login / masuk lobby
-    if (
-      text.toLowerCase().includes('welcome') ||
-      text.toLowerCase().includes('berhasil') ||
-      text.toLowerCase().includes('logged') ||
-      text.toLowerCase().includes('selamat')
-    ) {
-      if (!ready) {
-        ready = true;
-        console.log('🟢 Server READY');
-
-        setTimeout(() => startPatrol(bot), 5000);
-      }
-    }
-  });
-
-  // ================= PATROL =================
-  function startPatrol(bot) {
-    const center = bot.entity.position.clone();
-
-    const move = () => {
-      if (!bot.entity) return;
-
-      const x = center.x + (Math.random() - 0.5) * 20;
-      const z = center.z + (Math.random() - 0.5) * 20;
-
-      const goal = new goals.GoalNear(x, center.y, z, 1);
-      bot.pathfinder.setGoal(goal);
-
-      console.log(`🚶 Jalan ke ${Math.round(x)}, ${Math.round(z)}`);
-    };
-
-    bot.on('goal_reached', () => {
-      setTimeout(move, 15000);
-    });
-
-    move();
-  }
 
   // ================= ANTI AFK =================
   setInterval(() => {
-    if (bot.entity && ready) {
+    if (bot.entity) {
       bot.setControlState('jump', true);
       setTimeout(() => bot.setControlState('jump', false), 300);
     }
@@ -89,7 +56,6 @@ function createBot() {
   bot.on('end', (reason) => {
     console.log('❌ Disconnect:', reason);
 
-    // kalau socketClosed → server belum siap
     if (reason && reason.includes('socketClosed')) {
       retryDelay = 5000;
     }
@@ -98,15 +64,17 @@ function createBot() {
   });
 
   bot.on('error', err => console.log('⚠️', err.message));
-
-  function retry() {
-    console.log(`🔄 Retry ${retryDelay / 1000}s...`);
-
-    setTimeout(() => {
-      retryDelay = Math.min(retryDelay + 5000, MAX_DELAY);
-      createBot();
-    }, retryDelay);
-  }
 }
 
-createBot();
+// ================= RETRY =================
+function retry() {
+  console.log(`🔄 Retry ${retryDelay / 1000}s...`);
+
+  setTimeout(() => {
+    retryDelay = Math.min(retryDelay + 10000, MAX_DELAY);
+    start(); // 🔥 BALIK KE START (BUKAN createBot)
+  }, retryDelay);
+}
+
+// ================= RUN =================
+start();
