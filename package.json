@@ -1,5 +1,5 @@
 {
-  "name": "ymb-assiten-bot",
+  "name": "ymb-bot-bedrock",
   "version": "1.0.0",
   "main": "bot_bedrock.js",
   "scripts": {
