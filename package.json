@@ -1,11 +1,14 @@
 {
   "name": "java-bot",
   "version": "1.0.0",
+  "description": "Minecraft bot",
   "main": "bot_jalan.js",
   "scripts": {
     "start": "node bot_jalan.js"
   },
   "dependencies": {
-    "mineflayer": "^4.20.0"
-  }
+    "mineflayer": "^4.20.1"
+  },
+  "author": "",
+  "license": "ISC"
 }
