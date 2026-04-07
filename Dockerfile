@@ -2,7 +2,7 @@ FROM node:18
 
 # Tentukan folder kerja
 WORKDIR /usr/src/app
-
+RUN npm install --production --legacy-peer-deps
 # Salin package.json
 COPY package*.json ./
 
