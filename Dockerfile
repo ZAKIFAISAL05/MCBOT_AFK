@@ -2,14 +2,13 @@ FROM node:18
 
 WORKDIR /usr/src/app
 
-# Copy package.json dulu
 COPY package*.json ./
 
-# Install dependencies
+RUN echo "ISI PACKAGE.JSON:"
+RUN cat package.json
+
 RUN npm install
 
-# Copy semua file
 COPY . .
 
-# Jalankan bot
 CMD ["npm", "start"]
