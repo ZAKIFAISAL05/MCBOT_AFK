@@ -1,14 +1,15 @@
-FROM node:18
+FROM node:18-slim
 
 WORKDIR /usr/src/app
 
+# Copy package.json saja dulu
 COPY package*.json ./
 
-RUN echo "ISI PACKAGE.JSON:"
-RUN cat package.json
+# Install library
+RUN npm install --production
 
-RUN npm install
-
+# Baru copy sisa kodenya
 COPY . .
 
-CMD ["npm", "start"]
+# Jalankan menggunakan node langsung
+CMD ["node", "bot_bedrock.js"]
