@@ -1,5 +1,5 @@
 {
-  "name": "ymb-bot-bedrock",
+  "name": "ymb-bot",
   "version": "1.0.0",
   "main": "bot_bedrock.js",
   "scripts": {
@@ -7,8 +7,5 @@
   },
   "dependencies": {
     "bedrock-protocol": "1.25.0"
-  },
-  "engines": {
-    "node": "18.x"
   }
 }
