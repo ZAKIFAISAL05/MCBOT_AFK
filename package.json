@@ -1,0 +1,15 @@
+{
+  "name": "ymb-assiten-bot-1-21-11",
+  "version": "1.21.11",
+  "description": "Bot AFK y.m.b_assiten untuk Aternos Bedrock 1.21.11",
+  "main": "bot_jalan.js",
+  "scripts": {
+    "start": "node bot_jalan.js"
+  },
+  "dependencies": {
+    "mineflayer": "^4.20.0",
+    "mineflayer-bedrock": "^1.2.0",
+    "mineflayer-pathfinder": "^2.4.4",
+    "minecraft-data": "^3.71.0"
+  }
+}
