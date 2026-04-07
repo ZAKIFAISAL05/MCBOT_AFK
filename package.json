@@ -1,12 +1,12 @@
 {
-  "name": "ymb-assiten-bedrock",
+  "name": "ymb-assiten-bot",
   "version": "1.0.0",
   "main": "bot_bedrock.js",
   "scripts": {
     "start": "node bot_bedrock.js"
   },
   "dependencies": {
-    "bedrock-protocol": "^1.25.0"
+    "bedrock-protocol": "1.25.0"
   },
   "engines": {
     "node": "18.x"
