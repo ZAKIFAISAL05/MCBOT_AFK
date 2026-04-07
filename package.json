@@ -9,8 +9,5 @@
     "mineflayer": "^4.20.0",
     "mineflayer-pathfinder": "^2.4.4",
     "minecraft-data": "^3.71.0"
-  },
-  "engines": {
-    "node": "18.x"
   }
 }
