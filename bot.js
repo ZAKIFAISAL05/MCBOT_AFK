@@ -2,7 +2,7 @@ const bedrock = require('bedrock-protocol');
 
 const CONFIG = {
   host: 'Server_Partner.aternos.me',
-  port: 19132, // 🔥 port geyser (cek di aternos)
+  port: 60725, // 🔥 port geyser (cek di aternos)
   username: 'y.m.b_assiten'
 };
 
