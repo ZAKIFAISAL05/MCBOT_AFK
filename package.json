@@ -1,11 +1,11 @@
 {
-  "name": "bedrock-bot",
+  "name": "java-bot",
   "version": "1.0.0",
-  "main": "bot.js",
+  "main": "bot_jalan.js",
   "scripts": {
-    "start": "node bot.js"
+    "start": "node bot_jalan.js"
   },
   "dependencies": {
-    "bedrock-protocol": "^3.30.0"
+    "mineflayer": "^4.20.0"
   }
 }
