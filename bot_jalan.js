@@ -8,100 +8,79 @@ const CONFIG = {
   auth: 'offline'
 };
 
-let bot = null;
-let checkInterval = null;
-let isBotActive = false;
+let currentBot = null;
+let checkTimer = null;
 
-// Smart logging
-console.log('🧠 SMART Keep-Alive Bot v5.0');
-console.log('📡 ' + CONFIG.host + ':' + CONFIG.port);
-console.log('🎯 Logic: Join if empty → Exit if players');
+console.log('🧠 Smart Player Check Bot');
+console.log('🎯 Empty → Join | Players → Quit');
 
-// ================= CHECK PLAYERS =================
-async function checkPlayers() {
-  try {
-    const testBot = mineflayer.createBot({
-      ...CONFIG,
-      username: 'PlayerChecker_' + Date.now()
-    });
-    
-    await new Promise((resolve, reject) => {
-      testBot.once('error', reject);
-      testBot.once('end', reject);
+// ================= PLAYER CHECK =================
+async function checkServer() {
+  console.log('🔍 Checking players...');
+  
+  const checker = mineflayer.createBot({
+    ...CONFIG,
+    username: 'Checker_' + Date.now()
+  });
+  
+  return new Promise((resolve) => {
+    checker.once('spawn', () => {
+      const players = Object.keys(checker.players).length - 1;
+      console.log(`👥 Players: ${players}`);
       
-      testBot.once('spawn', () => {
-        const playerCount = Object.keys(testBot.players).length - 1; // -1 for self
-        console.log(`👥 Players online: ${playerCount}`);
-        
-        testBot.chat('/list');
-        setTimeout(() => {
-          testBot.quit();
-          resolve(playerCount);
-        }, 2000);
-      });
+      checker.quit();
+      resolve(players === 0);
     });
     
-    return playerCount;
-  } catch (e) {
-    console.log('⚠️ Check failed:', e.message);
-    return -1;
-  }
+    checker.on('end', () => resolve(false));
+    checker.on('error', () => resolve(false));
+  });
 }
 
-// ================= SMART CONNECT =================
-async function smartConnect() {
-  const players = await checkPlayers();
+// ================= JOIN BOT =================
+async function joinBot() {
+  if (currentBot) currentBot.quit();
   
-  if (players > 0) {
-    console.log('🚫 Players online - Bot OFF');
-    if (bot) {
-      bot.quit();
-      bot = null;
-    }
-    return;
-  }
+  currentBot = mineflayer.createBot(CONFIG);
   
-  console.log('✅ Server empty - Bot JOIN');
-  startKeepAliveBot();
+  currentBot.once('spawn', () => {
+    console.log('✅ JOINED - Keeping alive');
+    currentBot.chat('/login 123456');
+  });
+
+  currentBot.on('message', (msg) => {
+    console.log(msg.toString());
+  });
+
+  currentBot.on('end', () => {
+    console.log('❌ Quit');
+    currentBot = null;
+  });
 }
 
-// ================= KEEP-ALIVE BOT =================
-function startKeepAliveBot() {
-  if (bot) bot.quit();
-  
-  bot = mineflayer.createBot(CONFIG);
-  isBotActive = true;
-  
-  bot.once('spawn', () => {
-    console.log('✅ Keep-Alive ACTIVE');
-    bot.chat('/login 123456');
-  });
-
-  bot.on('message', msg => {
-    console.log('📨', msg.toString());
-  });
-
-  // Ping
-  const pingInt = setInterval(() => {
-    if (bot && bot.entity) {
-      bot.chat('.');
-    }
-  }, 20 * 60 * 1000);
-
-  bot.on('end', () => {
-    console.log('❌ Bot DC');
-    isBotActive = false;
-    bot = null;
-  });
+// ================= QUIT BOT =================
+function quitBot() {
+  if (currentBot) {
+    console.log('🚪 Player detected - QUIT');
+    currentBot.quit();
+    currentBot = null;
+  }
 }
 
 // ================= MAIN LOOP =================
-async function mainLoop() {
-  await smartConnect();
+async function loop() {
+  const isEmpty = await checkServer();
   
-  // Check every 5 minutes
-  setTimeout(mainLoop, 5 * 60 * 1000);
+  if (isEmpty && !currentBot) {
+    console.log('🎯 EMPTY → JOIN');
+    joinBot();
+  } else if (!isEmpty && currentBot) {
+    console.log('👥 PLAYERS → QUIT');
+    quitBot();
+  }
+  
+  setTimeout(loop, 2 * 60 * 1000); // 2 minutes
 }
 
 // START
-setTimeout(mainLoop, 10000);
+setTimeout(loop, 5000);
