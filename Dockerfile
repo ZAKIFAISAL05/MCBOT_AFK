@@ -1,6 +1,17 @@
 FROM node:18-alpine
-WORKDIR /app
+
+WORKDIR /usr/src/app
+
+# Copy package first (cache)
 COPY package.json .
-RUN npm install
+
+# Install
+RUN npm install --production --no-optional
+
+# Copy source
 COPY . .
+
+# Railway health
+EXPOSE 3000
+
 CMD ["npm", "start"]
