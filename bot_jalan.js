@@ -8,57 +8,44 @@ const CONFIG = {
   auth: 'offline'
 };
 
-let mainBot = null;
+let retryCount = 0;
+const MAX_RETRIES = 50;
 
-console.log('🚀 Simple Smart v8.0');
-console.log('📡 ' + CONFIG.host + ':' + CONFIG.port);
+console.log('🚀 Railway Aternos Keep-Alive v4.0');
+console.log('📡', CONFIG.host + ':' + CONFIG.port);
 
-// Simple check
-function simpleCheck() {
-  console.log('🔍 Check...');
+function connect() {
+  retryCount++;
+  console.log(`🔄 #${retryCount}/${MAX_RETRIES}`);
   
-  const checker = mineflayer.createBot({
+  const bot = mineflayer.createBot({
     ...CONFIG,
-    username: 'CheckBot'
+    connectTimeout: 30000
   });
   
-  checker.once('spawn', () => {
-    checker.chat('/list');
+  bot.once('spawn', () => {
+    console.log('✅ SERVER ALIVE!');
+    retryCount = 0;
+    bot.chat('/login 123456');
   });
-  
-  let gotList = false;
-  
-  checker.on('message', (msg) => {
-    const text = msg.toString();
-    if (text.includes('online: 0') || text.includes('Players (0)')) {
-      console.log('👥 0 players → JOIN');
-      if (!mainBot) startBot();
-      gotList = true;
-      checker.quit();
-    } else if (text.includes('online: 1') || text.includes('Players (1)')) {
-      console.log('👥 Players → QUIT');
-      if (mainBot) mainBot.quit();
-      gotList = true;
-      checker.quit();
+
+  bot.on('message', msg => {
+    console.log('📨', msg.toString());
+    if (msg.toString().includes('register')) {
+      bot.chat('/register 123456 123456');
     }
   });
-  
-  checker.on('end', () => {
-    if (!gotList) console.log('⚠️ No list response');
+
+  setInterval(() => {
+    if (bot.entity) bot.chat('.');
+  }, 1200000);
+
+  bot.on('end', () => {
+    console.log('❌ DC - 30s');
+    if (retryCount < MAX_RETRIES) {
+      setTimeout(connect, 30000);
+    }
   });
 }
 
-function startBot() {
-  mainBot = mineflayer.createBot(CONFIG);
-  
-  mainBot.once('spawn', () => {
-    console.log('✅ JOINED');
-    mainBot.chat('/login 123456');
-  });
-  
-  mainBot.on('end', () => mainBot = null);
-}
-
-// 20s simple check
-setInterval(simpleCheck, 20000);
-setTimeout(simpleCheck, 5000);
+setTimeout(connect, 10000);
