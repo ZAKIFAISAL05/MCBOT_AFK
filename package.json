@@ -1,8 +1,6 @@
 {
   "name": "aternos-keepalive",
   "version": "3.0.0",
-  "description": "Keep Aternos server alive 24/7",
-  "main": "bot_jalan.js",
   "scripts": {
     "start": "node bot_jalan.js"
   },
