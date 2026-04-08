@@ -2,13 +2,16 @@ FROM node:18-alpine
 
 WORKDIR /usr/src/app
 
+# Install deps
 COPY package.json .
 RUN npm install --production --no-optional
 
+# Copy code
 COPY . .
 
-# Health check
-HEALTHCHECK --interval=5m --timeout=10s \
-  CMD node -e "console.log('alive')" || exit 1
+# FIXED Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD node --version || exit 1
 
+# Run bot
 CMD ["npm", "start"]
