@@ -1,21 +1,30 @@
 const mineflayer = require('mineflayer');
 
+function randomName() {
+  const chars = 'abcdefghijklmnopqrstuvwxyz1234567890';
+  let name = 'Bot_';
+  for (let i = 0; i < 6; i++) {
+    name += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return name;
+}
+
 const CONFIG = {
   host: 'Server_Partner.aternos.me',
   port: 60725,
-  username: 'KeepAliveBot',
+  username: randomName(), // 🔥 random username tiap start
   version: false,
   auth: 'offline'
 };
 
+let currentBot = null;
 let retryCount = 0;
 const MAX_RETRIES = 50;
 
-let currentBot = null;
-let pingInterval = null;
 let antiAfkInterval = null;
+let pingInterval = null;
 
-console.log('🚀 KeepAlive BOT FINAL (ANTI KICK + ANTI JOIN-LEFT)');
+console.log('🚀 ADVANCED BOT (ANTI DETECT MODE)');
 console.log('📡 Target:', CONFIG.host + ':' + CONFIG.port);
 
 // ================= CONNECT =================
@@ -24,31 +33,34 @@ function connect() {
     try { currentBot.quit(); } catch (e) {}
   }
 
-  currentBot = null;
-  retryCount++;
+  // 🔥 username baru tiap reconnect
+  CONFIG.username = randomName();
 
-  console.log(`🔄 Try #${retryCount}/${MAX_RETRIES}`);
+  retryCount++;
+  console.log(`🔄 Connecting as ${CONFIG.username} (#${retryCount})`);
 
   currentBot = mineflayer.createBot({
     ...CONFIG,
     connectTimeout: 30000
   });
 
-  // ================= LOGIN =================
+  // ================= SPAWN =================
   currentBot.once('spawn', () => {
-    console.log('✅ SPAWNED (world loaded)');
+    console.log('✅ SPAWNED');
 
     retryCount = 0;
 
-    // ⏳ Delay login biar gak ke-kick
+    // ⏳ Delay random kayak manusia
+    const loginDelay = 7000 + Math.random() * 5000;
+
     setTimeout(() => {
       if (!currentBot) return;
 
       currentBot.chat('/login 123456');
       console.log('🔑 Login sent');
-    }, 8000);
+    }, loginDelay);
 
-    // 🚶 Gerak dikit biar gak dianggap bot
+    // 🚶 Gerakan awal (biar gak ke-detect bot)
     setTimeout(() => {
       if (!currentBot) return;
 
@@ -56,9 +68,9 @@ function connect() {
 
       setTimeout(() => {
         currentBot.setControlState('forward', false);
-      }, 2000);
+      }, 1500 + Math.random() * 1500);
 
-    }, 10000);
+    }, loginDelay + 2000);
 
     // ================= ANTI AFK =================
     if (antiAfkInterval) clearInterval(antiAfkInterval);
@@ -73,26 +85,27 @@ function connect() {
 
       setTimeout(() => {
         currentBot.setControlState(action, false);
-      }, 1000);
+      }, 800 + Math.random() * 1200);
 
       // lompat random
-      if (Math.random() < 0.3) {
+      if (Math.random() < 0.4) {
         currentBot.setControlState('jump', true);
         setTimeout(() => {
           currentBot.setControlState('jump', false);
-        }, 400);
+        }, 300);
       }
 
       // nengok random
       currentBot.look(
         Math.random() * Math.PI * 2,
-        Math.random() * Math.PI - Math.PI / 2,
+        (Math.random() - 0.5) * Math.PI,
         true
       );
 
-      console.log('🧠 Anti-AFK move');
+      console.log('🧠 Human-like movement');
 
-    }, 15000);
+    }, 10000 + Math.random() * 10000); // random interval
+
   });
 
   // ================= CHAT DETECT =================
@@ -106,26 +119,34 @@ function connect() {
     }
 
     if (text.includes('login')) {
-      currentBot.chat('/login 123456');
-      console.log('🔑 Login detected & sent');
+      setTimeout(() => {
+        currentBot.chat('/login 123456');
+        console.log('🔑 Login (detected)');
+      }, 2000);
     }
 
     if (text.toLowerCase().includes('welcome')) {
-      console.log('💚 Successfully joined!');
+      console.log('💚 Successfully joined server');
     }
   });
 
   // ================= KEEP ALIVE =================
+  if (pingInterval) clearInterval(pingInterval);
+
   pingInterval = setInterval(() => {
-    if (currentBot) {
-      currentBot.chat('afk');
-      console.log('💚 Keep alive');
-    }
-  }, 5 * 60 * 1000);
+    if (!currentBot) return;
+
+    const msgs = ['halo', 'afk', 'main bentar', 'lagi disini'];
+    const msg = msgs[Math.floor(Math.random() * msgs.length)];
+
+    currentBot.chat(msg);
+    console.log('💬 Chat:', msg);
+
+  }, 300000 + Math.random() * 120000); // 5–7 menit
 
   // ================= EVENTS =================
   currentBot.on('login', () => {
-    console.log('🔌 Logged into server');
+    console.log('🔌 Logged in server');
   });
 
   currentBot.on('kicked', reason => {
@@ -139,20 +160,22 @@ function connect() {
   currentBot.on('end', () => {
     console.log('❌ DISCONNECTED');
 
-    clearInterval(pingInterval);
     clearInterval(antiAfkInterval);
+    clearInterval(pingInterval);
 
     currentBot = null;
 
-    // ⏳ Delay reconnect biar gak spam
-    if (retryCount < MAX_RETRIES) {
-      console.log('🔄 Reconnect in 30s...');
-      setTimeout(connect, 30000);
-    } else {
-      console.log('🛑 Max retries, cooldown 2 menit');
+    // 🔥 delay random biar gak ke-detect spam reconnect
+    let delay = 30000 + Math.random() * 30000;
+
+    if (retryCount >= MAX_RETRIES) {
+      console.log('🛑 Cooldown 2 menit');
       retryCount = 0;
-      setTimeout(connect, 120000);
+      delay = 120000;
     }
+
+    console.log(`🔄 Reconnect in ${Math.round(delay / 1000)}s`);
+    setTimeout(connect, delay);
   });
 }
 
