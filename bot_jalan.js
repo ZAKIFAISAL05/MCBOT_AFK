@@ -1,4 +1,4 @@
-tabhain biyar gak di kick kaya karter dan skin nya const mineflayer = require('mineflayer');
+const mineflayer = require('mineflayer');
 
 const CONFIG = {
   host: 'Server_Partner.aternos.me',
