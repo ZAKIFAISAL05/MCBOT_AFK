@@ -16,7 +16,7 @@ let currentBot = null;
 console.log('🚀 Railway Aternos Keep-Alive v4.0');
 console.log('📡 Target:', CONFIG.host + ':' + CONFIG.port);
 console.log('💚 Password: 123456');
-console.log('⏳ Bot started...');
+console.log('⏳ 2 MINUTE RETRY MODE');
 
 // Auto retry connection
 function connect() {
@@ -73,23 +73,23 @@ function connect() {
   }, 20 * 60 * 1000);
 
   currentBot.on('end', () => {
-    console.log('❌ DISCONNECTED - Retry in 30s');
+    console.log('❌ DISCONNECTED - Retry in 2min');
     if (pingInterval) {
       clearInterval(pingInterval);
       pingInterval = null;
     }
     if (retryCount < MAX_RETRIES) {
-      setTimeout(connect, 30000);
+      setTimeout(connect, 120000); // ← 2 MENIT
     } else {
-      console.log('🛑 MAX RETRIES REACHED - Restart in 5min');
+      console.log('🛑 MAX RETRIES - Restart in 10min');
       retryCount = 0;
-      setTimeout(connect, 120000); // 5 menit
+      setTimeout(connect, 600000); // 10 menit
     }
   });
 
   currentBot.on('error', (err) => {
     if (err.code === 'ECONNRESET') {
-      console.log('🔴 Server OFFLINE - Auto retry...');
+      console.log('🔴 Server OFFLINE - Auto retry in 2min...');
     } else {
       console.log('⚠️ Error:', err.code || err.message);
     }
