@@ -83,7 +83,7 @@ function connect() {
     } else {
       console.log('🛑 MAX RETRIES REACHED - Restart in 5min');
       retryCount = 0;
-      setTimeout(connect, 110000); // 5 menit
+      setTimeout(connect, 120000); // 5 menit
     }
   });
 
