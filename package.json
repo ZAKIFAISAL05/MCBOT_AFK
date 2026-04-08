@@ -1,14 +1,12 @@
 {
   "name": "aternos-keepalive",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "Keep Aternos server alive 24/7",
-  "main": "bot.js",
+  "main": "bot_jalan.js",
   "scripts": {
-    "start": "node bot.js"
+    "start": "node bot_jalan.js"
   },
   "dependencies": {
     "mineflayer": "^4.20.1"
-  },
-  "author": "KeepAliveBot",
-  "license": "MIT"
+  }
 }
