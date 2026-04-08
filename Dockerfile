@@ -7,4 +7,8 @@ RUN npm install --production --no-optional
 
 COPY . .
 
-CMD ["node", "bot_jalan.js"]
+# Health check
+HEALTHCHECK --interval=5m --timeout=10s \
+  CMD node -e "console.log('alive')" || exit 1
+
+CMD ["npm", "start"]
