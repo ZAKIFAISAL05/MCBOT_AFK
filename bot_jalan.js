@@ -11,111 +11,113 @@ const CONFIG = {
 let retryCount = 0;
 const MAX_RETRIES = 50;
 let pingInterval = null;
+let antiAfkInterval = null;
 let currentBot = null;
 
-console.log('🚀 Railway Aternos Keep-Alive v4.1 - FIXED');
-console.log('📡 Target:', CONFIG.host + ':' + CONFIG.port);
-console.log('💚 Password: 123456');
-console.log('⏳ 2 MINUTE RETRY MODE');
+console.log('🚀 KeepAlive Anti-Kick Mode ON');
 
 // Auto retry connection
 function connect() {
-  // ✅ SAFE QUIT - Check if bot exists and has quit method
   if (currentBot && typeof currentBot.quit === 'function') {
-    try {
-      currentBot.quit();
-    } catch (e) {
-      console.log('⚠️ Quit failed, ignoring...');
-    }
+    try { currentBot.quit(); } catch (e) {}
   }
+
   currentBot = null;
-  
   retryCount++;
+
   console.log(`🔄 Try #${retryCount}/${MAX_RETRIES}`);
-  
-  try {
-    currentBot = mineflayer.createBot({
-      ...CONFIG,
-      connectTimeout: 30000
-    });
-  } catch (e) {
-    console.log('❌ Bot creation failed:', e.message);
-    setTimeout(connect, 5000);
-    return;
-  }
-  
+
+  currentBot = mineflayer.createBot({
+    ...CONFIG,
+    connectTimeout: 30000
+  });
+
   currentBot.once('spawn', () => {
-    console.log('✅ CONNECTED - SERVER ALIVE!');
+    console.log('✅ CONNECTED');
+
     retryCount = 0;
-    
-    // Clear old ping
-    if (pingInterval) {
-      clearInterval(pingInterval);
-      pingInterval = null;
-    }
-    
-    // Login
+
+    // LOGIN
     setTimeout(() => {
-      if (currentBot && typeof currentBot.chat === 'function') {
-        currentBot.chat('/login 123456');
-        console.log('🔑 Login sent');
+      currentBot.chat('/login 123456');
+    }, 4000);
+
+    // 🔥 ANTI AFK SYSTEM (BIAR GAK DIKICK)
+    if (antiAfkInterval) clearInterval(antiAfkInterval);
+
+    antiAfkInterval = setInterval(() => {
+      if (!currentBot || !currentBot.entity) return;
+
+      // Gerakan random
+      const actions = ['forward', 'back', 'left', 'right'];
+      const action = actions[Math.floor(Math.random() * actions.length)];
+
+      currentBot.setControlState(action, true);
+
+      setTimeout(() => {
+        currentBot.setControlState(action, false);
+      }, 1000);
+
+      // Lompat random
+      if (Math.random() < 0.3) {
+        currentBot.setControlState('jump', true);
+        setTimeout(() => {
+          currentBot.setControlState('jump', false);
+        }, 500);
       }
-    }, 3000);
+
+      // Liat random (head movement)
+      currentBot.look(
+        Math.random() * Math.PI * 2,
+        Math.random() * Math.PI - Math.PI / 2,
+        true
+      );
+
+      console.log('🧠 Anti-AFK action');
+    }, 15000); // tiap 15 detik
   });
 
   currentBot.on('message', msg => {
-    if (!currentBot) return;
     const text = msg.toString();
-    console.log('📨', text);
-    
+
     if (text.includes('register')) {
       currentBot.chat('/register 123456 123456');
-      console.log('📝 Register sent');
     }
-    if (text.includes('Welcome') || text.includes('login')) {
-      console.log('💚 Auth OK - Bot active!');
+
+    if (text.includes('login')) {
+      currentBot.chat('/login 123456');
     }
   });
 
-  // Keep alive ping setiap 20 menit
+  // KEEP ALIVE CHAT
   pingInterval = setInterval(() => {
-    if (currentBot && currentBot.entity && typeof currentBot.chat === 'function') {
-      currentBot.chat('.');
-      console.log('💚 Ping sent');
+    if (currentBot) {
+      currentBot.chat('afk');
+      console.log('💚 Keep alive chat');
     }
-  }, 20 * 60 * 1000);
+  }, 5 * 60 * 1000); // 5 menit
 
   currentBot.on('end', () => {
-    console.log('❌ DISCONNECTED - Retry in 2min');
-    if (pingInterval) {
-      clearInterval(pingInterval);
-      pingInterval = null;
-    }
-    currentBot = null; // ✅ Clear reference
-    if (retryCount < MAX_RETRIES) {
-      setTimeout(connect, 10000); // 2 MENIT
-    } else {
-      console.log('🛑 MAX RETRIES - Restart in 10min');
-      retryCount = 0;
-      setTimeout(connect, 60000); // 10 menit
-    }
-  });
+    console.log('❌ DISCONNECTED');
 
-  currentBot.on('error', (err) => {
-    if (err.code === 'ECONNRESET') {
-      console.log('🔴 Server OFFLINE - Auto retry in 2min...');
-    } else if (err.code === 'ETIMEDOUT') {
-      console.log('⏱️ Connection TIMEOUT - Server mungkin offline');
+    clearInterval(pingInterval);
+    clearInterval(antiAfkInterval);
+
+    if (retryCount < MAX_RETRIES) {
+      setTimeout(connect, 10000);
     } else {
-      console.log('⚠️ Error:', err.code || err.message);
+      retryCount = 0;
+      setTimeout(connect, 60000);
     }
-    // Don't clear bot here, let 'end' event handle it
   });
 
   currentBot.on('kicked', (reason) => {
-    console.log('👢 KICKED:', reason || 'unknown reason');
+    console.log('👢 KICKED:', reason);
+  });
+
+  currentBot.on('error', err => {
+    console.log('⚠️ Error:', err.code || err.message);
   });
 }
 
-// START SEKARANG!
 connect();
