@@ -1,9 +1,8 @@
 {
   "name": "bandotrok-keepalive",
   "version": "1.0.0",
-  "description": "Simple Aternos keep-alive",
   "scripts": {
-    "start": "node bot.js"
+    "start": "node index.js"
   },
   "dependencies": {
     "mineflayer": "^4.20.1"
