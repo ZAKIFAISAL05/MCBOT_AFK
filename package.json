@@ -1,16 +1,15 @@
 {
   "name": "railway-aternos-keepalive",
   "version": "4.0.0",
-  "description": "Aternos Keep-Alive Bot for Railway",
+  "description": "Aternos Keep-Alive Bot",
   "main": "bot_jalan.js",
   "scripts": {
     "start": "node bot_jalan.js"
   },
   "dependencies": {
-    "mineflayer": "^4.20.1",
-    "prismarine-proxy": "^1.5.0"
+    "mineflayer": "^4.20.1"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": "18"
   }
 }
