@@ -1,87 +1,64 @@
 const mineflayer = require('mineflayer');
 
 const CONFIG = {
-  host: 'Server_Partner.aternos.me',  // ← YOUR SERVER
-  port: 60725,                        // ← YOUR PORT
+  host: 'Server_Partner.aternos.me',
+  port: 60725,
+  username: 'KeepAliveBot',
   version: false,
   auth: 'offline'
 };
 
 let mainBot = null;
-let checkCount = 0;
 
-console.log('🚀 FAST Smart Keep-Alive v7.1');
+console.log('🚀 Simple Smart v8.0');
 console.log('📡 ' + CONFIG.host + ':' + CONFIG.port);
-console.log('⏱️ 10s player check cycle');
 
-// ================= 10s PLAYER CHECK =================
-function checkPlayers() {
-  checkCount++;
-  console.log(`🔍 Check #${checkCount}`);
+// Simple check
+function simpleCheck() {
+  console.log('🔍 Check...');
   
   const checker = mineflayer.createBot({
     ...CONFIG,
-    username: 'Check_' + Date.now(),
-    connectTimeout: 8000
+    username: 'CheckBot'
   });
   
   checker.once('spawn', () => {
-    const players = Object.keys(checker.players).length - 1;
-    console.log(`👥 Players: ${players}`);
-    
-    // PERFECT LOGIC
-    if (players === 0 && !mainBot) {
-      console.log('🎯 EMPTY → JOIN');
-      setTimeout(joinKeepAlive, 1000);
-    } else if (players > 0 && mainBot) {
-      console.log('👥 PLAYERS → QUIT');
-      quitKeepAlive();
+    checker.chat('/list');
+  });
+  
+  let gotList = false;
+  
+  checker.on('message', (msg) => {
+    const text = msg.toString();
+    if (text.includes('online: 0') || text.includes('Players (0)')) {
+      console.log('👥 0 players → JOIN');
+      if (!mainBot) startBot();
+      gotList = true;
+      checker.quit();
+    } else if (text.includes('online: 1') || text.includes('Players (1)')) {
+      console.log('👥 Players → QUIT');
+      if (mainBot) mainBot.quit();
+      gotList = true;
+      checker.quit();
     }
-    
-    checker.quit();
   });
   
   checker.on('end', () => {
-    // Silent fail
-  });
-  
-  checker.on('error', () => {
-    // Server offline = OK
+    if (!gotList) console.log('⚠️ No list response');
   });
 }
 
-// ================= KEEP-ALIVE BOT =================
-function joinKeepAlive() {
-  mainBot = mineflayer.createBot({
-    ...CONFIG,
-    username: 'KeepAliveBot'
-  });
+function startBot() {
+  mainBot = mineflayer.createBot(CONFIG);
   
   mainBot.once('spawn', () => {
-    console.log('✅ KEEP-ALIVE JOINED');
+    console.log('✅ JOINED');
     mainBot.chat('/login 123456');
   });
   
-  mainBot.on('message', (msg) => {
-    const text = msg.toString();
-    if (text.includes('register')) {
-      mainBot.chat('/register 123456 123456');
-    }
-  });
-  
-  mainBot.on('end', () => {
-    console.log('❌ KEEP-ALIVE QUIT');
-    mainBot = null;
-  });
+  mainBot.on('end', () => mainBot = null);
 }
 
-function quitKeepAlive() {
-  if (mainBot) {
-    mainBot.chat('bb');
-    mainBot.quit();
-  }
-}
-
-// ================= 10s LOOP =================
-setInterval(checkPlayers, 10000);
-checkPlayers(); // First check
+// 20s simple check
+setInterval(simpleCheck, 20000);
+setTimeout(simpleCheck, 5000);
