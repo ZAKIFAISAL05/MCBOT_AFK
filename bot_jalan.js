@@ -1,4 +1,4 @@
-const mineflayer = require('mineflayer'); // ← TAMBAHKAN INI DI ATAS!
+const mineflayer = require('mineflayer');
 
 const CONFIG = {
   host: 'Server_Partner.aternos.me',
@@ -11,67 +11,94 @@ const CONFIG = {
 let retryCount = 0;
 const MAX_RETRIES = 50;
 let pingInterval = null;
+let currentBot = null;
 
-// Railway + Aternos logging
 console.log('🚀 Railway Aternos Keep-Alive v4.0');
 console.log('📡 Target:', CONFIG.host + ':' + CONFIG.port);
 console.log('💚 Password: 123456');
+console.log('⏳ Bot started...');
 
 // Auto retry connection
 function connect() {
+  // Kill old bot
+  if (currentBot) {
+    currentBot.quit();
+    currentBot = null;
+  }
+  
   retryCount++;
   console.log(`🔄 Try #${retryCount}/${MAX_RETRIES}`);
   
-  const bot = mineflayer.createBot({
+  currentBot = mineflayer.createBot({
     ...CONFIG,
     connectTimeout: 30000
   });
   
-  bot.once('spawn', () => {
+  currentBot.once('spawn', () => {
     console.log('✅ CONNECTED - SERVER ALIVE!');
     retryCount = 0;
     
     // Clear old ping
-    if (pingInterval) clearInterval(pingInterval);
+    if (pingInterval) {
+      clearInterval(pingInterval);
+      pingInterval = null;
+    }
     
     // Login
-    setTimeout(() => bot.chat('/login 123456'), 3000);
+    setTimeout(() => {
+      currentBot.chat('/login 123456');
+      console.log('🔑 Login sent');
+    }, 3000);
   });
 
-  bot.on('message', msg => {
+  currentBot.on('message', msg => {
     const text = msg.toString();
     console.log('📨', text);
+    
     if (text.includes('register')) {
-      bot.chat('/register 123456 123456');
+      currentBot.chat('/register 123456 123456');
+      console.log('📝 Register sent');
+    }
+    if (text.includes('Welcome') || text.includes('login')) {
+      console.log('💚 Auth OK - Bot active!');
     }
   });
 
-  // Keep alive ping
+  // Keep alive ping setiap 20 menit
   pingInterval = setInterval(() => {
-    if (bot.entity) {
-      bot.chat('.');
-      console.log('💚 Ping');
+    if (currentBot && currentBot.entity) {
+      currentBot.chat('.');
+      console.log('💚 Ping sent');
     }
-  }, 20 * 60 * 1000); // 20 minutes
+  }, 20 * 60 * 1000);
 
-  bot.on('end', () => {
-    console.log('❌ DC - Retry in 30s');
-    if (pingInterval) clearInterval(pingInterval);
+  currentBot.on('end', () => {
+    console.log('❌ DISCONNECTED - Retry in 30s');
+    if (pingInterval) {
+      clearInterval(pingInterval);
+      pingInterval = null;
+    }
     if (retryCount < MAX_RETRIES) {
       setTimeout(connect, 30000);
     } else {
-      console.log('🛑 Max retries reached');
+      console.log('🛑 MAX RETRIES REACHED - Restart in 5min');
+      retryCount = 0;
+      setTimeout(connect, 300000); // 5 menit
     }
   });
 
-  bot.on('error', (err) => {
-    console.log('⚠️ Error:', err.code || err.message);
+  currentBot.on('error', (err) => {
+    if (err.code === 'ECONNRESET') {
+      console.log('🔴 Server OFFLINE - Auto retry...');
+    } else {
+      console.log('⚠️ Error:', err.code || err.message);
+    }
   });
 
-  bot.on('kicked', (reason) => {
-    console.log('👢 Kicked:', reason || 'unknown');
+  currentBot.on('kicked', (reason) => {
+    console.log('👢 KICKED:', reason || 'unknown reason');
   });
 }
 
-// Start after delay
-setTimeout(connect, 10000);
+// START SEKARANG!
+connect();
