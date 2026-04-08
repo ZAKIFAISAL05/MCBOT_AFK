@@ -3,151 +3,124 @@ const mineflayer = require('mineflayer');
 const CONFIG = {
   host: 'Server_Partner.aternos.me',
   port: 60725,
-  username: 'y.m.b_assiten',
+  username: 'human_player_' + Date.now(), // 🔥 UNIQUE USERNAME
   version: false,
   auth: 'offline',
-  connectTimeout: 30000,
-  hideErrors: false,
-  checkTimeoutInterval: 30000
+  connectTimeout: 60000,
+  viewDistance: 3,        // 🔥 LOW VIEW
+  checkTimeoutInterval: 60000
 };
 
-let retryDelay = 25000;
-const MAX_DELAY = 120000;
+let retryDelay = 30000;
 let consecutiveFails = 0;
-const MAX_CONSECUTIVE_FAILS = 5;
-let isStopping = false;
 let currentBot = null;
+let isBotAlive = false;
 
-process.on('uncaughtException', err => console.log('💥', err.message));
-process.on('unhandledRejection', err => console.log('💥', err.message));
+console.log('🚀 Aternos Stealth Bot v2');
 
-// ================= START =================
-function start() {
-  if (isStopping) return console.log('🛑 STOPPED');
-  
-  console.log(`⏳ Wait ${Math.round(retryDelay/1000)}s [${consecutiveFails}/${MAX_CONSECUTIVE_FAILS}]`);
-
-  setTimeout(createBot, retryDelay);
-}
-
-// ================= CREATE BOT =================
+// ================= ULTRA STEALTH SPAWN =================
 function createBot() {
-  console.log('🔌 Connecting...');
+  console.log('🔌 Stealth connect...');
   
-  if (currentBot) {
-    try { currentBot.end(); } catch(e){}
-    currentBot = null;
-  }
-
+  if (currentBot) currentBot.end();
+  
   currentBot = mineflayer.createBot(CONFIG);
 
-  // ================= HUMANIZE BEHAVIOR =================
   currentBot.once('spawn', () => {
-    console.log('✅ SPAWN!');
+    console.log('✅ Spawned - Stealth mode ON');
+    isBotAlive = true;
     
-    // NO JUMP INSTANT - tunggu 10s
+    // ================= CRITICAL: HUMAN SPAWN SEQUENCE =================
     setTimeout(() => {
+      // 1. Look around like human
+      currentBot.look(0, 0.1);
+      console.log('👀 Looking around...');
+    }, 2000);
+
+    setTimeout(() => {
+      // 2. Tiny walk forward
+      currentBot.setControlState('forward', true);
+      setTimeout(() => currentBot.setControlState('forward', false), 800);
+      console.log('🚶 Tiny walk...');
+    }, 5000);
+
+    setTimeout(() => {
+      // 3. Login AFTER movement
       console.log('🔐 Login...');
       currentBot.chat('/register 123456 123456');
-      setTimeout(() => currentBot.chat('/login 123456'), 2000);
-    }, 10000); // 🔥 10s delay
+    }, 8000);
+
+    setTimeout(() => {
+      currentBot.chat('/login 123456');
+      console.log('✅ Login sent');
+    }, 10000);
   });
 
-  currentBot.on('login', () => console.log('✅ LOGIN!'));
-
-  // ================= GENTLE ANTI-AFK =================
-  let antiAFKInterval;
-  setTimeout(() => {
-    antiAFKInterval = setInterval(humanAntiAFK, 60000); // 🔥 1 menit sekali
-  }, 30000); // Start after 30s
-
-  function humanAntiAFK() {
-    if (!currentBot.entity) return;
+  // ================= PERFECT ANTI-AFK =================
+  let afkTimer = 0;
+  const afkInterval = setInterval(() => {
+    if (!isBotAlive || !currentBot.entity) return;
     
-    // Random human-like actions
-    const actions = [
-      () => {
-        currentBot.setControlState('forward', true);
-        setTimeout(() => currentBot.setControlState('forward', false), 500);
-      },
-      () => {
-        currentBot.setControlState('jump', true);
-        setTimeout(() => currentBot.setControlState('jump', false), 300);
-      },
-      () => {
-        currentBot.look(Math.random() * 2 * Math.PI, 0, false);
-      },
-      () => {
-        currentBot.chat(' .'); // Tiny dot chat
-      }
-    ];
-    
-    // Random action
-    actions[Math.floor(Math.random() * actions.length)]();
-  }
+    afkTimer++;
+    if (afkTimer % 3 === 0) { // Every 3 minutes
+      // SUPER SUBTLE - just look around
+      const yaw = (Math.random() - 0.5) * 0.5;
+      const pitch = (Math.random() - 0.5) * 0.2;
+      currentBot.look(yaw, pitch, false);
+      console.log('👀 Subtle look');
+    }
+  }, 60000); // 1 min interval
 
   // ================= EVENTS =================
-  currentBot.on('end', (reason) => {
-    if (antiAFKInterval) clearInterval(antiAFKInterval);
-    console.log('❌ End:', reason || 'unknown');
-    
-    if (reason?.includes('socket') || reason?.includes('timeout')) {
-      consecutiveFails++;
-      if (consecutiveFails >= MAX_CONSECUTIVE_FAILS) {
-        console.log('🚨 MAX FAILS');
-        isStopping = true;
-        return;
-      }
-    }
-    retry();
-  });
-
-  currentBot.on('error', (err) => {
-    console.log('⚠️ Error:', err.message || err.code);
-    consecutiveFails++;
-    try { if (currentBot) currentBot.end(); } catch(e){}
-  });
-
-  currentBot.on('kicked', (reason) => {
-    console.log('👢 KICKED:', JSON.stringify(reason));
-    // Parse kick reason
-    if (reason?.translate === 'multiplayer.disconnect.invalid_player_movement') {
-      console.log('🎯 Anti-cheat detected - slowing down...');
-      retryDelay *= 2;
-    }
-    retry();
-  });
-
-  currentBot.on('message', (msg) => {
-    const text = msg.toString();
-    if (text.includes('register') || text.includes('login')) {
-      console.log('📩 Server:', text);
-    }
-  });
-
-  // Stay alive 15 menit max
-  setTimeout(() => {
-    console.log('⏰ 15min restart');
-    if (currentBot) currentBot.end();
-  }, 900000);
-}
-
-function retry() {
-  if (isStopping || consecutiveFails >= MAX_CONSECUTIVE_FAILS) {
-    console.log('🛑 STOP');
-    return;
+  currentBot.on('end', handleDisconnect);
+  currentBot.on('error', handleError);
+  currentBot.on('kicked', handleKick);
+  
+  function handleDisconnect(reason) {
+    clearInterval(afkInterval);
+    isBotAlive = false;
+    console.log('❌ Disconnected:', reason?.slice(0, 50));
+    retryConnect();
   }
-  retryDelay = Math.min(retryDelay * 1.3, MAX_DELAY);
-  console.log(`🔄 Retry ${Math.round(retryDelay/1000)}s`);
-  setTimeout(start, retryDelay);
+
+  function handleError(err) {
+    console.log('⚠️ Error:', err.message || err.code);
+    retryConnect();
+  }
+
+  function handleKick(reason) {
+    console.log('👢 KICKED:', reason.translate || 'unknown');
+    // Aternos specific handling
+    if (reason.translate === 'multiplayer.disconnect.invalid_player_movement') {
+      console.log('🎯 Aternos anti-cheat - wait longer...');
+      retryDelay = 120000; // 2 minutes
+    }
+    retryConnect();
+  }
 }
 
+// ================= SMART RETRY =================
+function retryConnect() {
+  consecutiveFails++;
+  const waitTime = Math.min(retryDelay * (1 + consecutiveFails * 0.2), 300000);
+  
+  console.log(`🔄 Retry in ${Math.round(waitTime/1000)}s [${consecutiveFails}]`);
+  
+  setTimeout(() => {
+    if (consecutiveFails > 8) {
+      console.log('🛑 Too many fails - stopping');
+      process.exit(1);
+    }
+    createBot();
+  }, waitTime);
+}
+
+// Graceful shutdown
 process.on('SIGINT', () => {
-  console.log('\n🛑 Shutdown');
-  isStopping = true;
+  console.log('\n🛑 Shutting down...');
   if (currentBot) currentBot.end();
   process.exit(0);
 });
 
-console.log('🚀 Human Bot Started');
-start();
+// ================= START =================
+setTimeout(createBot, 5000); // Initial delay
