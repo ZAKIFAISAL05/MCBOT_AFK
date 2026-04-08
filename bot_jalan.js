@@ -93,7 +93,7 @@ function connect() {
     }
     currentBot = null; // ✅ Clear reference
     if (retryCount < MAX_RETRIES) {
-      setTimeout(connect, 10000); // 2 MENIT
+      setTimeout(connect, 110000); // 2 MENIT
     } else {
       console.log('🛑 MAX RETRIES - Restart in 10min');
       retryCount = 0;
