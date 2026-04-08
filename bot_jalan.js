@@ -71,4 +71,4 @@ function connect() {
 }
 
 // Start after delay
-setTimeout(connect, 10000);sambil cek 
+setTimeout(connect, 10000);
