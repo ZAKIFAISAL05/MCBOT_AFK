@@ -1,85 +1,50 @@
 const mineflayer = require('mineflayer');
 
-// KONFIGURASI - UBAH SESUAI SERVER
 const CONFIG = {
-  host: 'Server_Partner.aternos.me',  // ← UBAH
-  port: 60725,                        // ← UBAH
+  host: 'Server_Partner.aternos.me',  // ← UBAH INI
+  port: 60725,                        // ← UBAH INI
   username: 'KeepAliveBot',
   version: false,
   auth: 'offline'
 };
 
-let reconnectTimer = null;
-let isOnline = false;
+console.log('🚀 Aternos Keep-Alive Bot v3.0');
+console.log('📡 ' + CONFIG.host + ':' + CONFIG.port);
 
-console.log('🚀 Aternos Keep-Alive Bot v2.0');
-console.log('📡 Server:', CONFIG.host + ':' + CONFIG.port);
-console.log('💚 Password: 123456');
+// Create bot
+const bot = mineflayer.createBot(CONFIG);
 
-// ================= MAIN BOT =================
-function connectBot() {
-  console.log('\n🔌 Connecting...');
+bot.once('spawn', () => {
+  console.log('✅ Bot spawned - Server ALIVE!');
   
-  const bot = mineflayer.createBot(CONFIG);
-  
-  bot.once('spawn', () => {
-    console.log('✅ SPAWNED - SERVER SAFE!');
-    isOnline = true;
-    
-    // Auto register/login
-    setTimeout(() => {
-      bot.chat('/register 123456 123456');
-    }, 3000);
-    
-    setTimeout(() => {
-      bot.chat('/login 123456');
-    }, 6000);
-  });
+  // Login sequence
+  setTimeout(() => bot.chat('/register 123456 123456'), 2000);
+  setTimeout(() => bot.chat('/login 123456'), 4000);
+});
 
-  // ================= KEEP ALIVE =================
-  setInterval(() => {
-    if (isOnline && bot.entity) {
-      bot.chat('.');  // Invisible ping
-      console.log('💚 Ping sent');
-    }
-  }, 20 * 60 * 1000); // 20 minutes
+bot.on('login', () => console.log('✅ Logged in!'));
 
-  // ================= EVENTS =================
-  bot.on('login', () => {
-    console.log('✅ LOGGED IN');
-  });
+// Keep alive ping
+setInterval(() => {
+  if (bot.entity) {
+    bot.chat('.');
+    console.log('💚 Alive ping');
+  }
+}, 1200000); // 20 minutes
 
-  bot.on('message', (msg) => {
-    const text = msg.toString();
-    console.log('📨 ' + text);
-  });
+bot.on('message', msg => {
+  console.log('📨 ' + msg.toString());
+});
 
-  bot.on('end', () => {
-    console.log('❌ DISCONNECTED');
-    isOnline = false;
-    reconnectBot();
-  });
+bot.on('end', () => {
+  console.log('❌ Disconnected - Restarting...');
+  setTimeout(() => process.exit(1), 5000);
+});
 
-  bot.on('kicked', (reason) => {
-    console.log('👢 KICKED:', reason.translate || 'unknown');
-    isOnline = false;
-    reconnectBot();
-  });
+bot.on('kicked', reason => {
+  console.log('👢 Kicked:', reason.translate);
+});
 
-  bot.on('error', (err) => {
-    console.log('⚠️ ERROR:', err.message);
-  });
-}
-
-// ================= AUTO RECONNECT =================
-function reconnectBot() {
-  if (reconnectTimer) clearTimeout(reconnectTimer);
-  
-  reconnectTimer = setTimeout(() => {
-    console.log('🔄 Auto reconnect...');
-    connectBot();
-  }, 30000); // 30s
-}
-
-// ================= START =================
-connectBot();
+bot.on('error', err => {
+  console.log('⚠️ Error:', err.message);
+});
