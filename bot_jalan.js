@@ -1,5 +1,3 @@
-const mineflayer = require('mineflayer');
-
 const CONFIG = {
   host: 'Server_Partner.aternos.me',
   port: 60725,
@@ -10,13 +8,17 @@ const CONFIG = {
 
 let retryCount = 0;
 const MAX_RETRIES = 50;
+let pingInterval = null;
 
+// Railway + Aternos logging
 console.log('🚀 Railway Aternos Keep-Alive v4.0');
-console.log('📡', CONFIG.host + ':' + CONFIG.port);
+console.log('📡 Target:', CONFIG.host + ':' + CONFIG.port);
+console.log('💚 Password: 123456');
 
+// Auto retry connection
 function connect() {
   retryCount++;
-  console.log(`🔄 #${retryCount}/${MAX_RETRIES}`);
+  console.log(`🔄 Try #${retryCount}/${MAX_RETRIES}`);
   
   const bot = mineflayer.createBot({
     ...CONFIG,
@@ -24,28 +26,49 @@ function connect() {
   });
   
   bot.once('spawn', () => {
-    console.log('✅ SERVER ALIVE!');
+    console.log('✅ CONNECTED - SERVER ALIVE!');
     retryCount = 0;
-    bot.chat('/login 123456');
+    
+    // Clear old ping
+    if (pingInterval) clearInterval(pingInterval);
+    
+    // Login
+    setTimeout(() => bot.chat('/login 123456'), 3000);
   });
 
   bot.on('message', msg => {
-    console.log('📨', msg.toString());
-    if (msg.toString().includes('register')) {
+    const text = msg.toString();
+    console.log('📨', text);
+    if (text.includes('register')) {
       bot.chat('/register 123456 123456');
     }
   });
 
-  setInterval(() => {
-    if (bot.entity) bot.chat('.');
-  }, 1200000);
+  // Keep alive ping
+  pingInterval = setInterval(() => {
+    if (bot.entity) {
+      bot.chat('.');
+      console.log('💚 Ping');
+    }
+  }, 20 * 60 * 1000); // 20 minutes
 
   bot.on('end', () => {
-    console.log('❌ DC - 30s');
+    console.log('❌ DC - Retry in 30s');
     if (retryCount < MAX_RETRIES) {
       setTimeout(connect, 30000);
+    } else {
+      console.log('🛑 Max retries');
     }
+  });
+
+  bot.on('error', (err) => {
+    console.log('⚠️', err.code || err.message);
+  });
+
+  bot.on('kicked', (reason) => {
+    console.log('👢 Kicked:', reason.translate || 'unknown');
   });
 }
 
-setTimeout(connect, 10000);
+// Start after delay
+setTimeout(connect, 10000);sambil cek 
