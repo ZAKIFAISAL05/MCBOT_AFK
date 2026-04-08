@@ -8,69 +8,100 @@ const CONFIG = {
   auth: 'offline'
 };
 
-let retryCount = 0;
-const MAX_RETRIES = 50;
-let pingInterval = null;
+let bot = null;
+let checkInterval = null;
+let isBotActive = false;
 
-// Railway + Aternos logging
-console.log('🚀 Railway Aternos Keep-Alive v4.0');
-console.log('📡 Target:', CONFIG.host + ':' + CONFIG.port);
-console.log('💚 Password: 123456');
+// Smart logging
+console.log('🧠 SMART Keep-Alive Bot v5.0');
+console.log('📡 ' + CONFIG.host + ':' + CONFIG.port);
+console.log('🎯 Logic: Join if empty → Exit if players');
 
-// Auto retry connection
-function connect() {
-  retryCount++;
-  console.log(`🔄 Try #${retryCount}/${MAX_RETRIES}`);
+// ================= CHECK PLAYERS =================
+async function checkPlayers() {
+  try {
+    const testBot = mineflayer.createBot({
+      ...CONFIG,
+      username: 'PlayerChecker_' + Date.now()
+    });
+    
+    await new Promise((resolve, reject) => {
+      testBot.once('error', reject);
+      testBot.once('end', reject);
+      
+      testBot.once('spawn', () => {
+        const playerCount = Object.keys(testBot.players).length - 1; // -1 for self
+        console.log(`👥 Players online: ${playerCount}`);
+        
+        testBot.chat('/list');
+        setTimeout(() => {
+          testBot.quit();
+          resolve(playerCount);
+        }, 2000);
+      });
+    });
+    
+    return playerCount;
+  } catch (e) {
+    console.log('⚠️ Check failed:', e.message);
+    return -1;
+  }
+}
+
+// ================= SMART CONNECT =================
+async function smartConnect() {
+  const players = await checkPlayers();
   
-  const bot = mineflayer.createBot({
-    ...CONFIG,
-    connectTimeout: 30000
-  });
+  if (players > 0) {
+    console.log('🚫 Players online - Bot OFF');
+    if (bot) {
+      bot.quit();
+      bot = null;
+    }
+    return;
+  }
+  
+  console.log('✅ Server empty - Bot JOIN');
+  startKeepAliveBot();
+}
+
+// ================= KEEP-ALIVE BOT =================
+function startKeepAliveBot() {
+  if (bot) bot.quit();
+  
+  bot = mineflayer.createBot(CONFIG);
+  isBotActive = true;
   
   bot.once('spawn', () => {
-    console.log('✅ CONNECTED - SERVER ALIVE!');
-    retryCount = 0;
-    
-    // Clear old ping
-    if (pingInterval) clearInterval(pingInterval);
-    
-    // Login
-    setTimeout(() => bot.chat('/login 123456'), 3000);
+    console.log('✅ Keep-Alive ACTIVE');
+    bot.chat('/login 123456');
   });
 
   bot.on('message', msg => {
-    const text = msg.toString();
-    console.log('📨', text);
-    if (text.includes('register')) {
-      bot.chat('/register 123456 123456');
-    }
+    console.log('📨', msg.toString());
   });
 
-  // Keep alive ping
-  pingInterval = setInterval(() => {
-    if (bot.entity) {
+  // Ping
+  const pingInt = setInterval(() => {
+    if (bot && bot.entity) {
       bot.chat('.');
-      console.log('💚 Ping');
     }
-  }, 20 * 60 * 1000); // 20 minutes
+  }, 20 * 60 * 1000);
 
   bot.on('end', () => {
-    console.log('❌ DC - Retry in 30s');
-    if (retryCount < MAX_RETRIES) {
-      setTimeout(connect, 30000);
-    } else {
-      console.log('🛑 Max retries');
-    }
-  });
-
-  bot.on('error', (err) => {
-    console.log('⚠️', err.code || err.message);
-  });
-
-  bot.on('kicked', (reason) => {
-    console.log('👢 Kicked:', reason.translate || 'unknown');
+    console.log('❌ Bot DC');
+    isBotActive = false;
+    bot = null;
   });
 }
 
-// Start after delay
-setTimeout(connect, 10000);
+// ================= MAIN LOOP =================
+async function mainLoop() {
+  await smartConnect();
+  
+  // Check every 5 minutes
+  setTimeout(mainLoop, 5 * 60 * 1000);
+}
+
+// START
+setTimeout(mainLoop, 10000);
