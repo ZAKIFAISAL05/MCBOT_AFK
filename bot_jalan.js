@@ -1,56 +1,57 @@
 const mineflayer = require('mineflayer');
 
 const CONFIG = {
-  host: 'Server_Partner.aternos.me',  // ← UBAH
-  port: 60725,                        // ← UBAH
+  host: 'Server_Partner.aternos.me',  // ← YOUR SERVER
+  port: 60725,                        // ← YOUR PORT
   version: false,
   auth: 'offline'
 };
 
 let mainBot = null;
-let checkInterval = null;
+let checkCount = 0;
 
-console.log('🧠 Smart Keep-Alive v6.0');
+console.log('🚀 FAST Smart Keep-Alive v7.1');
 console.log('📡 ' + CONFIG.host + ':' + CONFIG.port);
-console.log('🎯 Empty=Join | Players=Quit');
+console.log('⏱️ 10s player check cycle');
 
-// ================= PING BOT =================
-function pingServer() {
-  console.log('🔍 Ping...');
+// ================= 10s PLAYER CHECK =================
+function checkPlayers() {
+  checkCount++;
+  console.log(`🔍 Check #${checkCount}`);
   
-  const pingBot = mineflayer.createBot({
+  const checker = mineflayer.createBot({
     ...CONFIG,
-    username: 'PingBot_' + Date.now(),
-    connectTimeout: 15000
+    username: 'Check_' + Date.now(),
+    connectTimeout: 8000
   });
   
-  pingBot.once('spawn', () => {
-    const players = Object.keys(pingBot.players).length - 1;
+  checker.once('spawn', () => {
+    const players = Object.keys(checker.players).length - 1;
     console.log(`👥 Players: ${players}`);
     
-    // SMART LOGIC
+    // PERFECT LOGIC
     if (players === 0 && !mainBot) {
       console.log('🎯 EMPTY → JOIN');
-      setTimeout(startMainBot, 2000);
+      setTimeout(joinKeepAlive, 1000);
     } else if (players > 0 && mainBot) {
       console.log('👥 PLAYERS → QUIT');
-      if (mainBot) mainBot.quit();
+      quitKeepAlive();
     }
     
-    pingBot.quit();
+    checker.quit();
   });
   
-  pingBot.on('end', () => {
-    console.log('✅ Ping complete');
+  checker.on('end', () => {
+    // Silent fail
   });
   
-  pingBot.on('error', (err) => {
-    console.log('⚠️ Ping error:', err.message);
+  checker.on('error', () => {
+    // Server offline = OK
   });
 }
 
-// ================= MAIN BOT =================
-function startMainBot() {
+// ================= KEEP-ALIVE BOT =================
+function joinKeepAlive() {
   mainBot = mineflayer.createBot({
     ...CONFIG,
     username: 'KeepAliveBot'
@@ -62,20 +63,25 @@ function startMainBot() {
   });
   
   mainBot.on('message', (msg) => {
-    console.log('📨', msg.toString());
+    const text = msg.toString();
+    if (text.includes('register')) {
+      mainBot.chat('/register 123456 123456');
+    }
   });
   
   mainBot.on('end', () => {
-    console.log('❌ Main bot quit');
+    console.log('❌ KEEP-ALIVE QUIT');
     mainBot = null;
   });
 }
 
-// ================= LOOP =================
-function startLoop() {
-  pingServer();
-  checkInterval = setInterval(pingServer, 3 * 60 * 1000); // 3 minutes
+function quitKeepAlive() {
+  if (mainBot) {
+    mainBot.chat('bb');
+    mainBot.quit();
+  }
 }
 
-// START
-setTimeout(startLoop, 5000);
+// ================= 10s LOOP =================
+setInterval(checkPlayers, 10000);
+checkPlayers(); // First check
