@@ -10,15 +10,17 @@ const CONFIG = {
 
 let retryCount = 0;
 const MAX_RETRIES = 50;
+
+let currentBot = null;
 let pingInterval = null;
 let antiAfkInterval = null;
-let currentBot = null;
 
-console.log('🚀 KeepAlive Anti-Kick Mode ON');
+console.log('🚀 KeepAlive BOT FINAL (ANTI KICK + ANTI JOIN-LEFT)');
+console.log('📡 Target:', CONFIG.host + ':' + CONFIG.port);
 
-// Auto retry connection
+// ================= CONNECT =================
 function connect() {
-  if (currentBot && typeof currentBot.quit === 'function') {
+  if (currentBot) {
     try { currentBot.quit(); } catch (e) {}
   }
 
@@ -32,23 +34,38 @@ function connect() {
     connectTimeout: 30000
   });
 
+  // ================= LOGIN =================
   currentBot.once('spawn', () => {
-    console.log('✅ CONNECTED');
+    console.log('✅ SPAWNED (world loaded)');
 
     retryCount = 0;
 
-    // LOGIN
+    // ⏳ Delay login biar gak ke-kick
     setTimeout(() => {
-      currentBot.chat('/login 123456');
-    }, 4000);
+      if (!currentBot) return;
 
-    // 🔥 ANTI AFK SYSTEM (BIAR GAK DIKICK)
+      currentBot.chat('/login 123456');
+      console.log('🔑 Login sent');
+    }, 8000);
+
+    // 🚶 Gerak dikit biar gak dianggap bot
+    setTimeout(() => {
+      if (!currentBot) return;
+
+      currentBot.setControlState('forward', true);
+
+      setTimeout(() => {
+        currentBot.setControlState('forward', false);
+      }, 2000);
+
+    }, 10000);
+
+    // ================= ANTI AFK =================
     if (antiAfkInterval) clearInterval(antiAfkInterval);
 
     antiAfkInterval = setInterval(() => {
       if (!currentBot || !currentBot.entity) return;
 
-      // Gerakan random
       const actions = ['forward', 'back', 'left', 'right'];
       const action = actions[Math.floor(Math.random() * actions.length)];
 
@@ -58,44 +75,66 @@ function connect() {
         currentBot.setControlState(action, false);
       }, 1000);
 
-      // Lompat random
+      // lompat random
       if (Math.random() < 0.3) {
         currentBot.setControlState('jump', true);
         setTimeout(() => {
           currentBot.setControlState('jump', false);
-        }, 500);
+        }, 400);
       }
 
-      // Liat random (head movement)
+      // nengok random
       currentBot.look(
         Math.random() * Math.PI * 2,
         Math.random() * Math.PI - Math.PI / 2,
         true
       );
 
-      console.log('🧠 Anti-AFK action');
-    }, 15000); // tiap 15 detik
+      console.log('🧠 Anti-AFK move');
+
+    }, 15000);
   });
 
+  // ================= CHAT DETECT =================
   currentBot.on('message', msg => {
     const text = msg.toString();
+    console.log('📨', text);
 
     if (text.includes('register')) {
       currentBot.chat('/register 123456 123456');
+      console.log('📝 Register sent');
     }
 
     if (text.includes('login')) {
       currentBot.chat('/login 123456');
+      console.log('🔑 Login detected & sent');
+    }
+
+    if (text.toLowerCase().includes('welcome')) {
+      console.log('💚 Successfully joined!');
     }
   });
 
-  // KEEP ALIVE CHAT
+  // ================= KEEP ALIVE =================
   pingInterval = setInterval(() => {
     if (currentBot) {
       currentBot.chat('afk');
-      console.log('💚 Keep alive chat');
+      console.log('💚 Keep alive');
     }
-  }, 5 * 60 * 1000); // 5 menit
+  }, 5 * 60 * 1000);
+
+  // ================= EVENTS =================
+  currentBot.on('login', () => {
+    console.log('🔌 Logged into server');
+  });
+
+  currentBot.on('kicked', reason => {
+    console.log('👢 KICKED:', reason || 'unknown');
+  });
+
+  currentBot.on('error', err => {
+    console.log('⚠️ ERROR:', err.code || err.message);
+  });
 
   currentBot.on('end', () => {
     console.log('❌ DISCONNECTED');
@@ -103,21 +142,19 @@ function connect() {
     clearInterval(pingInterval);
     clearInterval(antiAfkInterval);
 
+    currentBot = null;
+
+    // ⏳ Delay reconnect biar gak spam
     if (retryCount < MAX_RETRIES) {
-      setTimeout(connect, 10000);
+      console.log('🔄 Reconnect in 30s...');
+      setTimeout(connect, 30000);
     } else {
+      console.log('🛑 Max retries, cooldown 2 menit');
       retryCount = 0;
-      setTimeout(connect, 60000);
+      setTimeout(connect, 120000);
     }
-  });
-
-  currentBot.on('kicked', (reason) => {
-    console.log('👢 KICKED:', reason);
-  });
-
-  currentBot.on('error', err => {
-    console.log('⚠️ Error:', err.code || err.message);
   });
 }
 
+// ================= START =================
 connect();
