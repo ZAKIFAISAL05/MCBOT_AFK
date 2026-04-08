@@ -1,85 +1,85 @@
 const mineflayer = require('mineflayer');
 
-const SERVER_CONFIG = {
-  host: 'Server_Partner.aternos.me',
-  port: 60725,
+// KONFIGURASI - UBAH SESUAI SERVER
+const CONFIG = {
+  host: 'Server_Partner.aternos.me',  // ← UBAH
+  port: 60725,                        // ← UBAH
+  username: 'KeepAliveBot',
   version: false,
   auth: 'offline'
 };
 
-// Generate unique username
-const botId = Date.now().toString(36) + Math.random().toString(36).substr(2, 4);
-const CONFIG = {
-  ...SERVER_CONFIG,
-  username: `player_${botId.slice(-8)}`,  // player_abc123xy
-  connectTimeout: 30000
-};
+let reconnectTimer = null;
+let isOnline = false;
 
-let totalAttempts = 0;
-let lastConnectTime = 0;
+console.log('🚀 Aternos Keep-Alive Bot v2.0');
+console.log('📡 Server:', CONFIG.host + ':' + CONFIG.port);
+console.log('💚 Password: 123456');
 
-// ================= ANTI-DETECT BOT =================
-function createBot() {
-  const now = Date.now();
-  const timeSinceLast = now - lastConnectTime;
-  
-  // Rate limit: min 60s between attempts
-  if (timeSinceLast < 60000) {
-    const wait = 60000 - timeSinceLast;
-    console.log(`⏳ Rate limit - wait ${Math.round(wait/1000)}s`);
-    setTimeout(createBot, wait);
-    return;
-  }
-  
-  lastConnectTime = now;
-  totalAttempts++;
-  console.log(`\n🤖 #${totalAttempts} | ${CONFIG.username}`);
+// ================= MAIN BOT =================
+function connectBot() {
+  console.log('\n🔌 Connecting...');
   
   const bot = mineflayer.createBot(CONFIG);
   
   bot.once('spawn', () => {
-    console.log('✅ SPAWNED - WAIT AUTH');
+    console.log('✅ SPAWNED - SERVER SAFE!');
+    isOnline = true;
     
-    // EXTREME SLOW login
+    // Auto register/login
+    setTimeout(() => {
+      bot.chat('/register 123456 123456');
+    }, 3000);
+    
     setTimeout(() => {
       bot.chat('/login 123456');
-      console.log('🔑 Login (slow)');
-    }, 15000); // 15s delay
+    }, 6000);
   });
 
-  // NO AFK - just stand still (most safe)
-  // Anti-cheat can't detect standing player
+  // ================= KEEP ALIVE =================
+  setInterval(() => {
+    if (isOnline && bot.entity) {
+      bot.chat('.');  // Invisible ping
+      console.log('💚 Ping sent');
+    }
+  }, 20 * 60 * 1000); // 20 minutes
+
+  // ================= EVENTS =================
+  bot.on('login', () => {
+    console.log('✅ LOGGED IN');
+  });
 
   bot.on('message', (msg) => {
     const text = msg.toString();
-    console.log('📨', text);
-    
-    // Auto register if needed
-    if (text.includes('register')) {
-      bot.chat('/register 123456 123456');
-    }
+    console.log('📨 ' + text);
   });
 
   bot.on('end', () => {
-    console.log('❌ DC');
-    // Slow retry 90s
-    setTimeout(createBot, 90000);
+    console.log('❌ DISCONNECTED');
+    isOnline = false;
+    reconnectBot();
   });
 
   bot.on('kicked', (reason) => {
-    console.log('👢 KICK:', reason?.translate || 'server');
-    setTimeout(createBot, 120000); // 2min
+    console.log('👢 KICKED:', reason.translate || 'unknown');
+    isOnline = false;
+    reconnectBot();
   });
 
   bot.on('error', (err) => {
-    console.log('⚠️', err.code || err.message);
-    setTimeout(createBot, 60000);
+    console.log('⚠️ ERROR:', err.message);
   });
 }
 
-// ================= START =================
-console.log('🚀 Aternos Anti-Detect Bot');
-console.log('👤 Unique ID:', CONFIG.username);
-console.log('⏳ Initial wait 2min...');
+// ================= AUTO RECONNECT =================
+function reconnectBot() {
+  if (reconnectTimer) clearTimeout(reconnectTimer);
+  
+  reconnectTimer = setTimeout(() => {
+    console.log('🔄 Auto reconnect...');
+    connectBot();
+  }, 30000); // 30s
+}
 
-setTimeout(createBot, 120000); // 2min initial
+// ================= START =================
+connectBot();
