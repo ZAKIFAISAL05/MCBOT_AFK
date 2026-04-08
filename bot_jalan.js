@@ -1,126 +1,115 @@
 const mineflayer = require('mineflayer');
+const { setTimeout: wait } = require('timers/promises');
 
 const CONFIG = {
   host: 'Server_Partner.aternos.me',
   port: 60725,
-  username: 'human_player_' + Date.now(), // 🔥 UNIQUE USERNAME
-  version: false,
-  auth: 'offline',
-  connectTimeout: 60000,
-  viewDistance: 3,        // 🔥 LOW VIEW
-  checkTimeoutInterval: 60000
+  username: 'player_' + Math.floor(Math.random()*10000),
+  version: '1.20.4',  // 🔥 SPECIFIC VERSION
+  auth: 'offline'
 };
 
-let retryDelay = 30000;
-let consecutiveFails = 0;
-let currentBot = null;
-let isBotAlive = false;
+let retryCount = 0;
+const MAX_RETRIES = 20;
+let serverReady = false;
 
-console.log('🚀 Aternos Stealth Bot v2');
-
-// ================= ULTRA STEALTH SPAWN =================
-function createBot() {
-  console.log('🔌 Stealth connect...');
+// ================= PING SERVER FIRST =================
+async function checkServer() {
+  console.log('🌐 PING server...');
   
-  if (currentBot) currentBot.end();
+  const mcData = require('minecraft-data')(CONFIG.version);
+  const { ping } = require('minecraft-protocol');
   
-  currentBot = mineflayer.createBot(CONFIG);
-
-  currentBot.once('spawn', () => {
-    console.log('✅ Spawned - Stealth mode ON');
-    isBotAlive = true;
+  try {
+    const result = await ping({
+      host: CONFIG.host,
+      port: CONFIG.port,
+      version: CONFIG.version,
+      timeout: 5000
+    });
     
-    // ================= CRITICAL: HUMAN SPAWN SEQUENCE =================
-    setTimeout(() => {
-      // 1. Look around like human
-      currentBot.look(0, 0.1);
-      console.log('👀 Looking around...');
-    }, 2000);
+    console.log('✅ Server ONLINE:', result.players.online + '/' + result.players.max);
+    serverReady = true;
+    return true;
+  } catch (e) {
+    console.log('❌ Server OFFLINE - wait 30s');
+    serverReady = false;
+    return false;
+  }
+}
 
-    setTimeout(() => {
-      // 2. Tiny walk forward
-      currentBot.setControlState('forward', true);
-      setTimeout(() => currentBot.setControlState('forward', false), 800);
-      console.log('🚶 Tiny walk...');
-    }, 5000);
+// ================= MAIN BOT =================
+async function createBot() {
+  if (!serverReady) {
+    console.log('⏳ Server not ready - retry ping...');
+    setTimeout(mainLoop, 30000);
+    return;
+  }
 
-    setTimeout(() => {
-      // 3. Login AFTER movement
-      console.log('🔐 Login...');
-      currentBot.chat('/register 123456 123456');
-    }, 8000);
-
-    setTimeout(() => {
-      currentBot.chat('/login 123456');
-      console.log('✅ Login sent');
-    }, 10000);
+  console.log(`🤖 Bot #${retryCount} connecting...`);
+  
+  const bot = mineflayer.createBot(CONFIG);
+  
+  bot.once('spawn', async () => {
+    console.log('✅ SPAWNED!');
+    retryCount = 0;
+    
+    // Human delay
+    await wait(5000);
+    bot.look(0.1, 0.05);
+    await wait(3000);
+    
+    bot.chat('/register 123456 123456');
+    await wait(1500);
+    bot.chat('/login 123456');
   });
 
-  // ================= PERFECT ANTI-AFK =================
-  let afkTimer = 0;
-  const afkInterval = setInterval(() => {
-    if (!isBotAlive || !currentBot.entity) return;
-    
-    afkTimer++;
-    if (afkTimer % 3 === 0) { // Every 3 minutes
-      // SUPER SUBTLE - just look around
-      const yaw = (Math.random() - 0.5) * 0.5;
-      const pitch = (Math.random() - 0.5) * 0.2;
-      currentBot.look(yaw, pitch, false);
-      console.log('👀 Subtle look');
-    }
-  }, 60000); // 1 min interval
-
-  // ================= EVENTS =================
-  currentBot.on('end', handleDisconnect);
-  currentBot.on('error', handleError);
-  currentBot.on('kicked', handleKick);
+  bot.on('login', () => console.log('✅ LOGGED IN'));
   
-  function handleDisconnect(reason) {
-    clearInterval(afkInterval);
-    isBotAlive = false;
-    console.log('❌ Disconnected:', reason?.slice(0, 50));
-    retryConnect();
-  }
+  // Anti-AFK subtle
+  setInterval(() => {
+    if (bot.entity) {
+      bot.look(Math.random()*0.2, Math.random()*0.1);
+    }
+  }, 120000); // 2 minutes
 
-  function handleError(err) {
-    console.log('⚠️ Error:', err.message || err.code);
-    retryConnect();
-  }
+  bot.on('end', () => {
+    console.log('❌ DISCONNECTED');
+    retryCount++;
+    setTimeout(mainLoop, 10000);
+  });
 
-  function handleKick(reason) {
+  bot.on('kicked', (reason) => {
     console.log('👢 KICKED:', reason.translate || 'unknown');
-    // Aternos specific handling
-    if (reason.translate === 'multiplayer.disconnect.invalid_player_movement') {
-      console.log('🎯 Aternos anti-cheat - wait longer...');
-      retryDelay = 120000; // 2 minutes
-    }
-    retryConnect();
+    retryCount++;
+    setTimeout(mainLoop, 15000);
+  });
+
+  bot.on('error', (err) => {
+    console.log('⚠️ ERROR:', err.code || err.message);
+    retryCount++;
+    try { bot.end(); } catch(e){}
+    setTimeout(mainLoop, 10000);
+  });
+}
+
+// ================= MAIN LOOP =================
+async function mainLoop() {
+  if (retryCount > MAX_RETRIES) {
+    console.log('🛑 MAX RETRIES - STOP');
+    return;
+  }
+  
+  await checkServer();
+  if (serverReady) {
+    createBot();
+  } else {
+    setTimeout(mainLoop, 30000);
   }
 }
 
-// ================= SMART RETRY =================
-function retryConnect() {
-  consecutiveFails++;
-  const waitTime = Math.min(retryDelay * (1 + consecutiveFails * 0.2), 300000);
-  
-  console.log(`🔄 Retry in ${Math.round(waitTime/1000)}s [${consecutiveFails}]`);
-  
-  setTimeout(() => {
-    if (consecutiveFails > 8) {
-      console.log('🛑 Too many fails - stopping');
-      process.exit(1);
-    }
-    createBot();
-  }, waitTime);
-}
+// START
+console.log('🚀 Aternos Smart Bot');
+console.log('📡 Target:', CONFIG.host + ':' + CONFIG.port);
 
-// Graceful shutdown
-process.on('SIGINT', () => {
-  console.log('\n🛑 Shutting down...');
-  if (currentBot) currentBot.end();
-  process.exit(0);
-});
-
-// ================= START =================
-setTimeout(createBot, 5000); // Initial delay
+mainLoop();
