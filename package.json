@@ -1,6 +1,8 @@
 {
-  "name": "aternos-keepalive",
-  "version": "3.0.0",
+  "name": "railway-aternos-keepalive",
+  "version": "4.0.0",
+  "description": "Railway Aternos Keep-Alive Bot",
+  "main": "bot_jalan.js",
   "scripts": {
     "start": "node bot_jalan.js"
   },
