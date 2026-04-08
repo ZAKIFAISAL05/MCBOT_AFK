@@ -1,8 +1,8 @@
 const mineflayer = require('mineflayer');
 
 const bot = mineflayer.createBot({
-  host: 'Server_Partner.aternos.me',  // ← UBAH
-  port: 60725,                        // ← UBAH  
+  host: 'Server_Partner.aternos.me',
+  port: 60725,
   username: 'Bandotrok',
   version: false
 });
@@ -23,7 +23,7 @@ setInterval(() => {
   if (bot.entity) {
     bot.chat('kek');
   }
-}, 900000); // 15 min
+}, 900000);
 
 bot.on('end', () => {
   console.log('🔄 Restart...');
