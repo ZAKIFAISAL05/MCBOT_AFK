@@ -1,15 +1,10 @@
 {
   "name": "java-bot",
   "version": "1.0.0",
-  "description": "Aternos Stable Minecraft Bot",
-  "main": "bot_jalan.js",
   "scripts": {
     "start": "node bot_jalan.js"
   },
   "dependencies": {
     "mineflayer": "^4.20.1"
-  },
-  "engines": {
-    "node": ">=18"
   }
 }
