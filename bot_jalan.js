@@ -1,3 +1,5 @@
+const mineflayer = require('mineflayer'); // ← TAMBAHKAN INI DI ATAS!
+
 const CONFIG = {
   host: 'Server_Partner.aternos.me',
   port: 60725,
@@ -54,19 +56,20 @@ function connect() {
 
   bot.on('end', () => {
     console.log('❌ DC - Retry in 30s');
+    if (pingInterval) clearInterval(pingInterval);
     if (retryCount < MAX_RETRIES) {
       setTimeout(connect, 30000);
     } else {
-      console.log('🛑 Max retries');
+      console.log('🛑 Max retries reached');
     }
   });
 
   bot.on('error', (err) => {
-    console.log('⚠️', err.code || err.message);
+    console.log('⚠️ Error:', err.code || err.message);
   });
 
   bot.on('kicked', (reason) => {
-    console.log('👢 Kicked:', reason.translate || 'unknown');
+    console.log('👢 Kicked:', reason || 'unknown');
   });
 }
 
