@@ -1,115 +1,59 @@
 const mineflayer = require('mineflayer');
-const { setTimeout: wait } = require('timers/promises');
 
 const CONFIG = {
   host: 'Server_Partner.aternos.me',
   port: 60725,
-  username: 'player_' + Math.floor(Math.random()*10000),
-  version: '1.20.4',  // 🔥 SPECIFIC VERSION
+  username: 'stealth_' + Date.now(),
+  version: '1.20',  // Aternos default
   auth: 'offline'
 };
 
-let retryCount = 0;
-const MAX_RETRIES = 20;
-let serverReady = false;
+let retryDelay = 45000;  // 45s Aternos startup
+let fails = 0;
 
-// ================= PING SERVER FIRST =================
-async function checkServer() {
-  console.log('🌐 PING server...');
-  
-  const mcData = require('minecraft-data')(CONFIG.version);
-  const { ping } = require('minecraft-protocol');
-  
-  try {
-    const result = await ping({
-      host: CONFIG.host,
-      port: CONFIG.port,
-      version: CONFIG.version,
-      timeout: 5000
-    });
-    
-    console.log('✅ Server ONLINE:', result.players.online + '/' + result.players.max);
-    serverReady = true;
-    return true;
-  } catch (e) {
-    console.log('❌ Server OFFLINE - wait 30s');
-    serverReady = false;
-    return false;
-  }
-}
+// ================= WAIT ATERNOS START =================
+console.log('⏳ Wait Aternos boot (45s)...');
+setTimeout(createBot, 45000);
 
-// ================= MAIN BOT =================
-async function createBot() {
-  if (!serverReady) {
-    console.log('⏳ Server not ready - retry ping...');
-    setTimeout(mainLoop, 30000);
-    return;
-  }
-
-  console.log(`🤖 Bot #${retryCount} connecting...`);
-  
+function createBot() {
+  console.log(`🤖 Attempt ${++fails} - ${CONFIG.username}`);
   const bot = mineflayer.createBot(CONFIG);
-  
-  bot.once('spawn', async () => {
+
+  bot.once('spawn', () => {
     console.log('✅ SPAWNED!');
-    retryCount = 0;
+    fails = 0;
+    retryDelay = 45000;
     
-    // Human delay
-    await wait(5000);
-    bot.look(0.1, 0.05);
-    await wait(3000);
-    
-    bot.chat('/register 123456 123456');
-    await wait(1500);
-    bot.chat('/login 123456');
+    // HUMAN SEQUENCE
+    setTimeout(() => bot.look(0.2, 0.1), 3000);
+    setTimeout(() => {
+      bot.setControlState('forward', true);
+      setTimeout(() => bot.setControlState('forward', false), 600);
+    }, 7000);
+    setTimeout(() => bot.chat('/register 123456 123456'), 12000);
+    setTimeout(() => bot.chat('/login 123456'), 14000);
   });
 
-  bot.on('login', () => console.log('✅ LOGGED IN'));
+  bot.on('login', () => console.log('✅ LOGIN'));
   
-  // Anti-AFK subtle
+  // SUBTLE AFK
   setInterval(() => {
-    if (bot.entity) {
-      bot.look(Math.random()*0.2, Math.random()*0.1);
-    }
-  }, 120000); // 2 minutes
+    if (bot.entity) bot.look(Math.random() * 0.3, Math.random() * 0.2);
+  }, 180000); // 3 min
 
   bot.on('end', () => {
-    console.log('❌ DISCONNECTED');
-    retryCount++;
-    setTimeout(mainLoop, 10000);
+    console.log('❌ DC');
+    if (fails < 10) {
+      console.log(`🔄 Retry ${Math.round(retryDelay/1000)}s`);
+      setTimeout(createBot, retryDelay);
+      retryDelay = Math.min(retryDelay + 15000, 180000);
+    } else {
+      console.log('🛑 Max fails');
+    }
   });
 
-  bot.on('kicked', (reason) => {
-    console.log('👢 KICKED:', reason.translate || 'unknown');
-    retryCount++;
-    setTimeout(mainLoop, 15000);
-  });
-
-  bot.on('error', (err) => {
-    console.log('⚠️ ERROR:', err.code || err.message);
-    retryCount++;
-    try { bot.end(); } catch(e){}
-    setTimeout(mainLoop, 10000);
-  });
+  bot.on('kicked', (r) => console.log('👢 KICK:', r.translate));
+  bot.on('error', (e) => console.log('⚠️ ERR:', e.message));
 }
 
-// ================= MAIN LOOP =================
-async function mainLoop() {
-  if (retryCount > MAX_RETRIES) {
-    console.log('🛑 MAX RETRIES - STOP');
-    return;
-  }
-  
-  await checkServer();
-  if (serverReady) {
-    createBot();
-  } else {
-    setTimeout(mainLoop, 30000);
-  }
-}
-
-// START
-console.log('🚀 Aternos Smart Bot');
-console.log('📡 Target:', CONFIG.host + ':' + CONFIG.port);
-
-mainLoop();
+console.log('🚀 Aternos Stealth Bot');
