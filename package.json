@@ -1,12 +1,11 @@
 {
-  "name": "railway-aternos-keepalive",
-  "version": "4.0.0",
-  "description": "Railway Aternos Keep-Alive Bot",
-  "main": "bot_jalan.js",
+  "name": "bandotrok-keepalive",
+  "version": "1.0.0",
+  "description": "Simple Aternos keep-alive bot",
   "scripts": {
-    "start": "node bot_jalan.js"
+    "start": "node bot.js"
   },
   "dependencies": {
-    "mineflayer": "^4.20.1"
+    "mineflayer": "4.18.1"
   }
 }
