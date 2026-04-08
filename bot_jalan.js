@@ -1,50 +1,63 @@
 const mineflayer = require('mineflayer');
 
 const CONFIG = {
-  host: 'Server_Partner.aternos.me',  // ← UBAH INI
-  port: 60725,                        // ← UBAH INI
+  host: 'Server_Partner.aternos.me',
+  port: 60725,
   username: 'KeepAliveBot',
   version: false,
   auth: 'offline'
 };
 
-console.log('🚀 Aternos Keep-Alive Bot v3.0');
-console.log('📡 ' + CONFIG.host + ':' + CONFIG.port);
+let retryCount = 0;
+const MAX_RETRIES = 50;
 
-// Create bot
-const bot = mineflayer.createBot(CONFIG);
+// Railway logging
+console.log('🚀 Railway Aternos Keep-Alive');
+console.log('📡 Target:', CONFIG.host + ':' + CONFIG.port);
 
-bot.once('spawn', () => {
-  console.log('✅ Bot spawned - Server ALIVE!');
+// Auto retry connection
+function connect() {
+  retryCount++;
+  console.log(`🔄 Try #${retryCount}/${MAX_RETRIES}`);
   
-  // Login sequence
-  setTimeout(() => bot.chat('/register 123456 123456'), 2000);
-  setTimeout(() => bot.chat('/login 123456'), 4000);
-});
+  const bot = mineflayer.createBot({
+    ...CONFIG,
+    connectTimeout: 30000
+  });
+  
+  bot.once('spawn', () => {
+    console.log('✅ CONNECTED - SERVER ALIVE!');
+    retryCount = 0;
+    
+    // Login
+    setTimeout(() => bot.chat('/login 123456'), 3000);
+  });
 
-bot.on('login', () => console.log('✅ Logged in!'));
+  bot.on('message', msg => {
+    const text = msg.toString();
+    console.log('📨', text);
+    if (text.includes('register')) bot.chat('/register 123456 123456');
+  });
 
-// Keep alive ping
-setInterval(() => {
-  if (bot.entity) {
-    bot.chat('.');
-    console.log('💚 Alive ping');
-  }
-}, 1200000); // 20 minutes
+  // Keep alive
+  setInterval(() => {
+    if (bot.entity) {
+      bot.chat('.');
+      console.log('💚 Ping');
+    }
+  }, 20 * 60 * 1000);
 
-bot.on('message', msg => {
-  console.log('📨 ' + msg.toString());
-});
+  bot.on('end', () => {
+    console.log('❌ DC - Retry in 30s');
+    if (retryCount < MAX_RETRIES) {
+      setTimeout(connect, 30000);
+    }
+  });
 
-bot.on('end', () => {
-  console.log('❌ Disconnected - Restarting...');
-  setTimeout(() => process.exit(1), 5000);
-});
+  bot.on('error', (err) => {
+    console.log('⚠️', err.code || err.message);
+  });
+}
 
-bot.on('kicked', reason => {
-  console.log('👢 Kicked:', reason.translate);
-});
-
-bot.on('error', err => {
-  console.log('⚠️ Error:', err.message);
-});
+// Start after delay
+setTimeout(connect, 10000);
