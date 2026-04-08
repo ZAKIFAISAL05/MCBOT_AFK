@@ -1,94 +1,85 @@
 const mineflayer = require('mineflayer');
 
-const CONFIG = {
+const SERVER_CONFIG = {
   host: 'Server_Partner.aternos.me',
   port: 60725,
-  username: 'afk_player',
   version: false,
-  auth: 'offline',
-  connectTimeout: 60000
+  auth: 'offline'
 };
 
-let connectionCount = 0;
-let isConnected = false;
-let loginAttempted = false;
+// Generate unique username
+const botId = Date.now().toString(36) + Math.random().toString(36).substr(2, 4);
+const CONFIG = {
+  ...SERVER_CONFIG,
+  username: `player_${botId.slice(-8)}`,  // player_abc123xy
+  connectTimeout: 30000
+};
 
-// ================= STABLE BOT =================
-function startBot() {
-  console.log(`\n🤖 #${++connectionCount} | ${CONFIG.username}`);
+let totalAttempts = 0;
+let lastConnectTime = 0;
+
+// ================= ANTI-DETECT BOT =================
+function createBot() {
+  const now = Date.now();
+  const timeSinceLast = now - lastConnectTime;
+  
+  // Rate limit: min 60s between attempts
+  if (timeSinceLast < 60000) {
+    const wait = 60000 - timeSinceLast;
+    console.log(`⏳ Rate limit - wait ${Math.round(wait/1000)}s`);
+    setTimeout(createBot, wait);
+    return;
+  }
+  
+  lastConnectTime = now;
+  totalAttempts++;
+  console.log(`\n🤖 #${totalAttempts} | ${CONFIG.username}`);
   
   const bot = mineflayer.createBot(CONFIG);
   
   bot.once('spawn', () => {
-    console.log('✅ SPAWNED!');
-    isConnected = true;
-    connectionCount = 0;
-    loginAttempted = false;
+    console.log('✅ SPAWNED - WAIT AUTH');
     
-    // Safe login sequence
+    // EXTREME SLOW login
     setTimeout(() => {
-      if (!loginAttempted) {
-        bot.chat('/login 123456');
-        console.log('🔑 Login sent');
-        loginAttempted = true;
-      }
-    }, 8000);
+      bot.chat('/login 123456');
+      console.log('🔑 Login (slow)');
+    }, 15000); // 15s delay
   });
 
-  bot.on('login', () => {
-    console.log('✅ LOGGED IN - STABLE');
-  });
+  // NO AFK - just stand still (most safe)
+  // Anti-cheat can't detect standing player
 
-  // Ultra-safe AFK (head rotate only)
-  setInterval(() => {
-    if (bot.entity && isConnected) {
-      bot.look(0, Math.sin(Date.now() / 20000) * 0.05);
-    }
-  }, 240000); // 4 minutes
-
-  // ================= EVENTS =================
-  bot.on('end', handleDisconnect);
-  bot.on('kicked', handleKick);
-  bot.on('error', handleError);
-
-  function handleDisconnect() {
-    console.log('❌ DC');
-    isConnected = false;
-    safeRetry();
-  }
-
-  function handleKick(reason) {
-    console.log('👢 KICK:', reason?.translate || 'unknown');
-    isConnected = false;
-    safeRetry();
-  }
-
-  function handleError(err) {
-    console.log('⚠️ ERR:', err.message?.slice(0, 40) || err.code);
-    safeRetry();
-  }
-
-  function safeRetry() {
-    if (connectionCount < 100) {
-      const delay = connectionCount > 5 ? 30000 : 15000;
-      setTimeout(startBot, delay);
-    } else {
-      console.log('🛑 Max connections');
-    }
-  }
-
-  // Monitor important messages
   bot.on('message', (msg) => {
-    const text = msg.toString().toLowerCase();
-    if (text.includes('login') || text.includes('register') || text.includes('password')) {
-      console.log('📨', msg.toString());
+    const text = msg.toString();
+    console.log('📨', text);
+    
+    // Auto register if needed
+    if (text.includes('register')) {
+      bot.chat('/register 123456 123456');
     }
+  });
+
+  bot.on('end', () => {
+    console.log('❌ DC');
+    // Slow retry 90s
+    setTimeout(createBot, 90000);
+  });
+
+  bot.on('kicked', (reason) => {
+    console.log('👢 KICK:', reason?.translate || 'server');
+    setTimeout(createBot, 120000); // 2min
+  });
+
+  bot.on('error', (err) => {
+    console.log('⚠️', err.code || err.message);
+    setTimeout(createBot, 60000);
   });
 }
 
 // ================= START =================
-console.log('🚀 Aternos Ultra Stable Bot v3.0');
-console.log('📡', CONFIG.host + ':' + CONFIG.port);
-console.log('⏳ Initial wait 45s (Aternos boot)...');
+console.log('🚀 Aternos Anti-Detect Bot');
+console.log('👤 Unique ID:', CONFIG.username);
+console.log('⏳ Initial wait 2min...');
 
-setTimeout(startBot, 45000);
+setTimeout(createBot, 120000); // 2min initial
