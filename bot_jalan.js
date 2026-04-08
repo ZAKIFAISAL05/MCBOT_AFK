@@ -13,26 +13,36 @@ const MAX_RETRIES = 50;
 let pingInterval = null;
 let currentBot = null;
 
-console.log('🚀 Railway Aternos Keep-Alive v4.0');
+console.log('🚀 Railway Aternos Keep-Alive v4.1 - FIXED');
 console.log('📡 Target:', CONFIG.host + ':' + CONFIG.port);
 console.log('💚 Password: 123456');
 console.log('⏳ 2 MINUTE RETRY MODE');
 
 // Auto retry connection
 function connect() {
-  // Kill old bot
-  if (currentBot) {
-    currentBot.quit();
-    currentBot = null;
+  // ✅ SAFE QUIT - Check if bot exists and has quit method
+  if (currentBot && typeof currentBot.quit === 'function') {
+    try {
+      currentBot.quit();
+    } catch (e) {
+      console.log('⚠️ Quit failed, ignoring...');
+    }
   }
+  currentBot = null;
   
   retryCount++;
   console.log(`🔄 Try #${retryCount}/${MAX_RETRIES}`);
   
-  currentBot = mineflayer.createBot({
-    ...CONFIG,
-    connectTimeout: 30000
-  });
+  try {
+    currentBot = mineflayer.createBot({
+      ...CONFIG,
+      connectTimeout: 30000
+    });
+  } catch (e) {
+    console.log('❌ Bot creation failed:', e.message);
+    setTimeout(connect, 5000);
+    return;
+  }
   
   currentBot.once('spawn', () => {
     console.log('✅ CONNECTED - SERVER ALIVE!');
@@ -46,12 +56,15 @@ function connect() {
     
     // Login
     setTimeout(() => {
-      currentBot.chat('/login 123456');
-      console.log('🔑 Login sent');
+      if (currentBot && typeof currentBot.chat === 'function') {
+        currentBot.chat('/login 123456');
+        console.log('🔑 Login sent');
+      }
     }, 3000);
   });
 
   currentBot.on('message', msg => {
+    if (!currentBot) return;
     const text = msg.toString();
     console.log('📨', text);
     
@@ -66,7 +79,7 @@ function connect() {
 
   // Keep alive ping setiap 20 menit
   pingInterval = setInterval(() => {
-    if (currentBot && currentBot.entity) {
+    if (currentBot && currentBot.entity && typeof currentBot.chat === 'function') {
       currentBot.chat('.');
       console.log('💚 Ping sent');
     }
@@ -78,8 +91,9 @@ function connect() {
       clearInterval(pingInterval);
       pingInterval = null;
     }
+    currentBot = null; // ✅ Clear reference
     if (retryCount < MAX_RETRIES) {
-      setTimeout(connect, 120000); // ← 2 MENIT
+      setTimeout(connect, 120000); // 2 MENIT
     } else {
       console.log('🛑 MAX RETRIES - Restart in 10min');
       retryCount = 0;
@@ -90,9 +104,12 @@ function connect() {
   currentBot.on('error', (err) => {
     if (err.code === 'ECONNRESET') {
       console.log('🔴 Server OFFLINE - Auto retry in 2min...');
+    } else if (err.code === 'ETIMEDOUT') {
+      console.log('⏱️ Connection TIMEOUT - Server mungkin offline');
     } else {
       console.log('⚠️ Error:', err.code || err.message);
     }
+    // Don't clear bot here, let 'end' event handle it
   });
 
   currentBot.on('kicked', (reason) => {
