@@ -4,8 +4,9 @@ const CONFIG = {
   host: 'dynamic-8.magmanode.com',
   port: 25865,
   username: 'KeepAliveBot',
-  version: false,
-  auth: 'offline'
+  version: '1.21.1', // Sesuaikan dengan versi Paper kamu agar tidak mismatch
+  auth: 'offline',
+  viewDistance: 'tiny' // Mengurangi beban koneksi
 };
 
 let retryCount = 0;
@@ -13,20 +14,13 @@ const MAX_RETRIES = 50;
 let pingInterval = null;
 let currentBot = null;
 
-console.log('🚀 Railway Aternos Keep-Alive v4.1 - FIXED');
+console.log('🚀 Railway Keep-Alive v4.2 - STABLE VERSION');
 console.log('📡 Target:', CONFIG.host + ':' + CONFIG.port);
-console.log('💚 Password: 123456');
-console.log('⏳ 2 MINUTE RETRY MODE');
+console.log('⏳ Anti-Kick & Auto-Login Active');
 
-// Auto retry connection
 function connect() {
-  // ✅ SAFE QUIT - Check if bot exists and has quit method
-  if (currentBot && typeof currentBot.quit === 'function') {
-    try {
-      currentBot.quit();
-    } catch (e) {
-      console.log('⚠️ Quit failed, ignoring...');
-    }
+  if (currentBot) {
+    try { currentBot.quit(); } catch (e) {}
   }
   currentBot = null;
   
@@ -36,7 +30,9 @@ function connect() {
   try {
     currentBot = mineflayer.createBot({
       ...CONFIG,
-      connectTimeout: 30000
+      connectTimeout: 30000,
+      // Update: Tambahkan check agar bot tidak melakukan pergerakan aneh saat spawn
+      checkTimeoutInterval: 60000 
     });
   } catch (e) {
     console.log('❌ Bot creation failed:', e.message);
@@ -48,74 +44,52 @@ function connect() {
     console.log('✅ CONNECTED - SERVER ALIVE!');
     retryCount = 0;
     
-    // Clear old ping
-    if (pingInterval) {
-      clearInterval(pingInterval);
-      pingInterval = null;
-    }
-    
-    // Login
+    if (pingInterval) clearInterval(pingInterval);
+
+    // Login logic
     setTimeout(() => {
-      if (currentBot && typeof currentBot.chat === 'function') {
+      if (currentBot && currentBot.chat) {
         currentBot.chat('/login 123456');
         console.log('🔑 Login sent');
       }
-    }, 3000);
+    }, 5000); // Jeda lebih lama sedikit agar tidak dianggap spam
   });
 
   currentBot.on('message', msg => {
-    if (!currentBot) return;
     const text = msg.toString();
     console.log('📨', text);
     
-    if (text.includes('register')) {
+    if (text.includes('/register')) {
       currentBot.chat('/register 123456 123456');
-      console.log('📝 Register sent');
-    }
-    if (text.includes('Welcome') || text.includes('login')) {
-      console.log('💚 Auth OK - Bot active!');
     }
   });
 
-  // Keep alive ping setiap 20 menit
+  // Anti-AFK Ping lebih sering (setiap 5 menit)
   pingInterval = setInterval(() => {
-    if (currentBot && currentBot.entity && typeof currentBot.chat === 'function') {
-      currentBot.chat('.');
-      console.log('💚 Ping sent');
+    if (currentBot && currentBot.entity) {
+      // Menggunakan perintah /me atau titik agar tidak dianggap spam
+      currentBot.chat('/me is staying alive'); 
+      console.log('💚 Keep-alive pulse sent');
     }
-  }, 20 * 60 * 1000);
+  }, 5 * 60 * 1000);
 
-  currentBot.on('end', () => {
-    console.log('❌ DISCONNECTED - Retry in 2min');
-    if (pingInterval) {
-      clearInterval(pingInterval);
-      pingInterval = null;
-    }
-    currentBot = null; // ✅ Clear reference
-    if (retryCount < MAX_RETRIES) {
-      setTimeout(connect, 110000); // 2 MENIT
-    } else {
-      console.log('🛑 MAX RETRIES - Restart in 10min');
-      retryCount = 0;
-      setTimeout(connect, 60000); // 10 menit
-    }
+  currentBot.on('end', (reason) => {
+    console.log('❌ DISCONNECTED:', reason);
+    if (pingInterval) clearInterval(pingInterval);
+    currentBot = null;
+    
+    // Retry delay 1 menit (tidak terlalu lama, tidak terlalu cepat)
+    setTimeout(connect, 60000); 
   });
 
   currentBot.on('error', (err) => {
-    if (err.code === 'ECONNRESET') {
-      console.log('🔴 Server OFFLINE - Auto retry in 2min...');
-    } else if (err.code === 'ETIMEDOUT') {
-      console.log('⏱️ Connection TIMEOUT - Server mungkin offline');
-    } else {
-      console.log('⚠️ Error:', err.code || err.message);
-    }
-    // Don't clear bot here, let 'end' event handle it
+    console.log('⚠️ Error:', err.code || err.message);
   });
 
   currentBot.on('kicked', (reason) => {
-    console.log('👢 KICKED:', reason || 'unknown reason');
+    console.log('👢 KICKED REASON:', reason);
+    // Jika kena kick "Invalid Move", pastikan server.properties sudah di-fix
   });
 }
 
-// START SEKARANG!
 connect();
