@@ -40,7 +40,7 @@ function connect() {
   }
   
   currentBot.once('spawn', () => {
-    console.log('✅ CONNECTED - BOT IN WORLD');
+    console.log('✅ CONNEdCTED - BOT IN WORLD');
     retryCount = 0;
     
     // Memastikan bot tidak melakukan pergerakan apapun
