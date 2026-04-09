@@ -57,6 +57,13 @@ function connect() {
     }, 5000); 
   });
 
+  // --- TAMBAHAN FITUR JOIN & DEATH DETECTION ---
+  currentBot.on('playerJoined', (player) => {
+    if (player.username !== currentBot.username) {
+      currentBot.chat(`Halo ${player.username}, selamat datang!`);
+    }
+  });
+
   currentBot.on('message', msg => {
     const text = msg.toString();
     console.log('📨', text);
