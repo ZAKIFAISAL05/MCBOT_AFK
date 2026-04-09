@@ -4,7 +4,7 @@ const CONFIG = {
   host: 'Server_Partner_Cbt.aternos.me',
   port: 38130,
   username: 'Y.M.B_ASSITEN',
-  version: '1.21.4', 
+  version: '1.21.11', 
   auth: 'offline',
   viewDistance: 'tiny'
 };
