@@ -1,4 +1,5 @@
 const mineflayer = require('mineflayer');
+const http = require('http');
 
 const CONFIG = {
   host: 'dynamic-8.magmanode.com',
@@ -11,12 +12,10 @@ const CONFIG = {
 
 let retryCount = 0;
 const MAX_RETRIES = 50;
-let pingInterval = null;
 let currentBot = null;
 
 console.log('🚀 Railway Keep-Alive v4.5 - DYNAMIC MODE');
 console.log('📡 Target:', CONFIG.host + ':' + CONFIG.port);
-console.log('⏳ Anti-Kick, Random Move & Woodcutter Active');
 
 function connect() {
   if (currentBot) {
@@ -31,7 +30,7 @@ function connect() {
     currentBot = mineflayer.createBot({
       ...CONFIG,
       connectTimeout: 30000,
-      physicsEnabled: true, // Diaktifkan lagi agar bisa gerak & hancur blok
+      physicsEnabled: true, 
       checkTimeoutInterval: 60000 
     });
   } catch (e) {
@@ -43,10 +42,8 @@ function connect() {
   currentBot.once('spawn', () => {
     console.log('✅ CONNECTED - BOT IS ALIVE!');
     retryCount = 0;
-    
-    if (pingInterval) clearInterval(pingInterval);
 
-    // Login logic
+    // Auto Login
     setTimeout(() => {
       if (currentBot && currentBot.chat) {
         currentBot.chat('/login 123456');
@@ -54,65 +51,60 @@ function connect() {
       }
     }, 5000);
 
-    // --- FITUR TAMBAHAN: GERAK RANDOM ---
+    // --- GERAK RANDOM ---
     setInterval(() => {
       if (!currentBot || !currentBot.entity) return;
-      const rx = Math.random() * 10 - 5;
-      const rz = Math.random() * 10 - 5;
       currentBot.setControlState('forward', true);
+      currentBot.setControlState('jump', Math.random() > 0.5); // Kadang lompat
+      
       setTimeout(() => {
-        if (currentBot) currentBot.setControlState('forward', false);
-      }, 1000);
+        if (currentBot) {
+          currentBot.setControlState('forward', false);
+          currentBot.setControlState('jump', false);
+        }
+      }, 1500);
+      
       currentBot.look(Math.random() * Math.PI * 2, 0);
-    }, 15000);
+    }, 20000);
 
-    // --- FITUR TAMBAHAN: HANCUR POHON (SIMPEL) ---
+    // --- HANCUR POHON (SIMPEL) ---
     setInterval(() => {
       if (!currentBot) return;
       const woodBlock = currentBot.findBlock({
-        matching: block => block.name.includes('log'), // Cari blok kayu apa saja
+        matching: block => block.name.includes('log'), 
         maxDistance: 4
       });
 
       if (woodBlock) {
         console.log('🪓 Found wood, chopping...');
         currentBot.dig(woodBlock, (err) => {
-          if (err) console.log('❌ Digging error:', err.message);
-          else console.log('✅ Wood chopped!');
+          if (!err) console.log('✅ Wood chopped!');
         });
       }
-    }, 20000);
+    }, 25000);
   });
 
   currentBot.on('message', msg => {
     const text = msg.toString();
-    console.log('📨', text);
     if (text.includes('/register')) {
       currentBot.chat('/register 123456 123456');
     }
   });
 
-  pingInterval = setInterval(() => {
-    if (currentBot && currentBot.entity) {
-      currentBot.chat('/me is working hard...'); 
-      console.log('💚 Keep-alive pulse sent');
-    }
-  }, 5 * 60 * 1000);
-
   currentBot.on('end', (reason) => {
     console.log('❌ DISCONNECTED:', reason);
-    if (pingInterval) clearInterval(pingInterval);
-    currentBot = null;
     setTimeout(connect, 60000); 
   });
 
   currentBot.on('error', (err) => {
-    console.log('⚠️ Error:', err.code || err.message);
-  });
-
-  currentBot.on('kicked', (reason) => {
-    console.log('👢 KICKED REASON:', reason);
+    console.log('⚠️ Error:', err.message);
   });
 }
+
+// Web Server buat "menipu" Railway agar tidak mematikan bot
+http.createServer((req, res) => {
+  res.write('Bot is Online');
+  res.end();
+}).listen(3000);
 
 connect();
