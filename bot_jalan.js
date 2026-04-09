@@ -1,8 +1,8 @@
 const mineflayer = require('mineflayer');
 
 const CONFIG = {
-  host: 'dynamic-8.magmanode.com',
-  port: 25865,
+  host: 'Server_Partner_CBT.aternos.me',
+  port: 55420,
   username: 'Y.M.B_ASSITEN',
   version: '1.21.1', 
   auth: 'offline',
