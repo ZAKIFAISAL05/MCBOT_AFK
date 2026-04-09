@@ -1,8 +1,8 @@
 const mineflayer = require('mineflayer');
 
 const CONFIG = {
-  host: 'Server_Partner_CBT.aternos.me',
-  port: 55420,
+  host: 'Server_Partner_Cbt.aternos.me',
+  port: 38130,
   username: 'Y.M.B_ASSITEN',
   version: '1.21.1', 
   auth: 'offline',
