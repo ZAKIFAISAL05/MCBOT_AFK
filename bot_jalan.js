@@ -4,9 +4,9 @@ const CONFIG = {
   host: 'dynamic-8.magmanode.com',
   port: 25865,
   username: 'KeepAliveBot',
-  version: '1.21.1', // Sesuaikan dengan versi Paper kamu agar tidak mismatch
+  version: '1.21.1', 
   auth: 'offline',
-  viewDistance: 'tiny' // Mengurangi beban koneksi
+  viewDistance: 'tiny'
 };
 
 let retryCount = 0;
@@ -14,9 +14,8 @@ const MAX_RETRIES = 50;
 let pingInterval = null;
 let currentBot = null;
 
-console.log('🚀 Railway Keep-Alive v4.2 - STABLE VERSION');
+console.log('🚀 Railway Keep-Alive v4.3 - ANTI-KICK STABLE');
 console.log('📡 Target:', CONFIG.host + ':' + CONFIG.port);
-console.log('⏳ Anti-Kick & Auto-Login Active');
 
 function connect() {
   if (currentBot) {
@@ -31,7 +30,7 @@ function connect() {
     currentBot = mineflayer.createBot({
       ...CONFIG,
       connectTimeout: 30000,
-      // Update: Tambahkan check agar bot tidak melakukan pergerakan aneh saat spawn
+      physicsEnabled: false, // PENTING: Matikan fisika agar tidak kena kick "Invalid Move"
       checkTimeoutInterval: 60000 
     });
   } catch (e) {
@@ -41,9 +40,12 @@ function connect() {
   }
   
   currentBot.once('spawn', () => {
-    console.log('✅ CONNECTED - SERVER ALIVE!');
+    console.log('✅ CONNECTED - BOT IN WORLD');
     retryCount = 0;
     
+    // Memastikan bot tidak melakukan pergerakan apapun
+    currentBot.clearControlStates();
+
     if (pingInterval) clearInterval(pingInterval);
 
     // Login logic
@@ -52,7 +54,7 @@ function connect() {
         currentBot.chat('/login 123456');
         console.log('🔑 Login sent');
       }
-    }, 5000); // Jeda lebih lama sedikit agar tidak dianggap spam
+    }, 5000); 
   });
 
   currentBot.on('message', msg => {
@@ -64,11 +66,10 @@ function connect() {
     }
   });
 
-  // Anti-AFK Ping lebih sering (setiap 5 menit)
+  // Anti-AFK setiap 5 menit
   pingInterval = setInterval(() => {
     if (currentBot && currentBot.entity) {
-      // Menggunakan perintah /me atau titik agar tidak dianggap spam
-      currentBot.chat('/me is staying alive'); 
+      currentBot.chat('/me is still here'); 
       console.log('💚 Keep-alive pulse sent');
     }
   }, 5 * 60 * 1000);
@@ -77,8 +78,6 @@ function connect() {
     console.log('❌ DISCONNECTED:', reason);
     if (pingInterval) clearInterval(pingInterval);
     currentBot = null;
-    
-    // Retry delay 1 menit (tidak terlalu lama, tidak terlalu cepat)
     setTimeout(connect, 60000); 
   });
 
@@ -88,7 +87,6 @@ function connect() {
 
   currentBot.on('kicked', (reason) => {
     console.log('👢 KICKED REASON:', reason);
-    // Jika kena kick "Invalid Move", pastikan server.properties sudah di-fix
   });
 }
 
