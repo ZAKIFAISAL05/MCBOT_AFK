@@ -12,13 +12,12 @@ const CONFIG = {
 let retryCount = 0;
 const MAX_RETRIES = 50;
 let pingInterval = null;
-let prayerInterval = null; // Tambahan untuk interval sholat
 let currentBot = null;
 
 console.log('🚀 Railway Keep-Alive v4.3 - ANTI-KICK STABLE');
 console.log('📡 Target:', CONFIG.host + ':' + CONFIG.port);
 
-// Data Waktu Sholat (Estimasi WIB)
+// --- TAMBAHAN DATA JADWAL SHOLAT (WIB) ---
 const JADWAL_SHOLAT = [
   { nama: 'Subuh', jam: 4, menit: 40 },
   { nama: 'Dzuhur', jam: 12, menit: 0 },
@@ -53,10 +52,10 @@ function connect() {
     console.log('✅ CONNECTED - BOT IN WORLD');
     retryCount = 0;
     
+    // Memastikan bot tidak melakukan pergerakan apapun
     currentBot.clearControlStates();
 
     if (pingInterval) clearInterval(pingInterval);
-    if (prayerInterval) clearInterval(prayerInterval);
 
     // Login logic
     setTimeout(() => {
@@ -66,29 +65,30 @@ function connect() {
       }
     }, 5000); 
 
-    // Fitur Cek Waktu Sholat (WIB)
-    prayerInterval = setInterval(() => {
+    // --- TAMBAHAN FITUR WAKTU SHOLAT ---
+    setInterval(() => {
       const sekarang = new Date();
+      // Konversi ke WIB (GMT+7)
       const wib = new Date(sekarang.getTime() + (7 * 60 * 60 * 1000) + (sekarang.getTimezoneOffset() * 60000));
       const jam = wib.getHours();
       const menit = wib.getMinutes();
 
       JADWAL_SHOLAT.forEach(s => {
-        if (jam === s.jam && menit === s.menit) {
-          currentBot.chat(`✨ Waktunya Sholat ${s.nama} untuk wilayah Indonesia dan sekitarnya.`);
+        if (jam === s.jam && menit === s.min) {
+          currentBot.chat(`[RIDFOT] Waktunya Sholat ${s.nama} untuk wilayah Indonesia dan sekitarnya.`);
         }
       });
-    }, 60000); // Cek setiap menit
+    }, 60000);
   });
 
-  // Fitur Deteksi Join
+  // --- TAMBAHAN FITUR JOIN & DEATH DETECTION ---
   currentBot.on('playerJoined', (player) => {
     if (player.username !== currentBot.username) {
-      currentBot.chat(`Halo ${player.username}, selamat datang di server!`);
+      currentBot.chat(`Halo ${player.username}, selamat datang!`);
     }
   });
 
-  currentBot.on('message', (msg, position) => {
+  currentBot.on('message', msg => {
     const text = msg.toString();
     console.log('📨', text);
     
@@ -96,10 +96,10 @@ function connect() {
       currentBot.chat('/register 123456 123456');
     }
 
-    // Fitur Respon Pesan Kematian (Death Message)
-    const deathKeywords = ['slain', 'died', 'killed', 'fell', 'terbunuh', 'mati'];
-    if (deathKeywords.some(word => text.toLowerCase().includes(word)) && position === 'chat') {
-       currentBot.chat('Turut berduka cita atas kematianmu... Semangat lagi ya!');
+    // Cek pesan kematian
+    const deathWords = ['slain', 'died', 'killed', 'fell', 'terbunuh', 'mati'];
+    if (deathWords.some(word => text.toLowerCase().includes(word))) {
+      currentBot.chat('Tetap semangat! Jangan menyerah setelah mati.');
     }
   });
 
@@ -114,7 +114,6 @@ function connect() {
   currentBot.on('end', (reason) => {
     console.log('❌ DISCONNECTED:', reason);
     if (pingInterval) clearInterval(pingInterval);
-    if (prayerInterval) clearInterval(prayerInterval);
     currentBot = null;
     setTimeout(connect, 60000); 
   });
