@@ -14,7 +14,7 @@ let retryCount = 0;
 const MAX_RETRIES = 50;
 let currentBot = null;
 
-console.log('🚀 Railway Keep-Alive v4.6 - ANTI-KICK DYNAMIC');
+console.log('🚀 Railway Keep-Alive v4.7 - ULTIMATE STABLE');
 console.log('📡 Target:', CONFIG.host + ':' + CONFIG.port);
 
 function connect() {
@@ -30,7 +30,8 @@ function connect() {
     currentBot = mineflayer.createBot({
       ...CONFIG,
       connectTimeout: 30000,
-      physicsEnabled: false, // MULAI DENGAN FALSE AGAR TIDAK KENA KICK
+      // WAJIB FALSE DI AWAL: Supaya tidak kena kick "Invalid Move" saat login
+      physicsEnabled: false, 
       checkTimeoutInterval: 60000 
     });
   } catch (e) {
@@ -40,18 +41,10 @@ function connect() {
   }
   
   currentBot.once('spawn', () => {
-    console.log('✅ CONNECTED - WAITING FOR SAFE LANDING...');
+    console.log('✅ CONNECTED - STANDING STILL FOR STABILITY...');
     retryCount = 0;
 
-    // 1. SAFE LANDING: Aktifkan fisika setelah 10 detik napak di server
-    setTimeout(() => {
-      if (currentBot) {
-        currentBot.physicsEnabled = true;
-        console.log('🛡️ Physics Activated Safely');
-      }
-    }, 10000);
-
-    // 2. AUTO LOGIN
+    // 1. LOGIN (Jeda 5 detik)
     setTimeout(() => {
       if (currentBot && currentBot.chat) {
         currentBot.chat('/login 123456');
@@ -59,39 +52,41 @@ function connect() {
       }
     }, 5000);
 
-    // 3. GERAK RANDOM (Hanya jalan jika fisika sudah ON)
-    setInterval(() => {
-      if (!currentBot || !currentBot.entity || !currentBot.physicsEnabled) return;
-      
-      currentBot.setControlState('forward', true);
-      currentBot.setControlState('jump', Math.random() > 0.5);
-      
-      setTimeout(() => {
-        if (currentBot) {
-          currentBot.setControlState('forward', false);
-          currentBot.setControlState('jump', false);
-        }
-      }, 1500);
-      
-      currentBot.look(Math.random() * Math.PI * 2, 0);
-    }, 20000);
-
-    // 4. HANCUR POHON (Hanya jalan jika fisika sudah ON)
-    setInterval(() => {
-      if (!currentBot || !currentBot.physicsEnabled) return;
-      
-      const woodBlock = currentBot.findBlock({
-        matching: block => block.name.includes('log'), 
-        maxDistance: 4
-      });
-
-      if (woodBlock) {
-        console.log('🪓 Found wood, chopping...');
-        currentBot.dig(woodBlock, (err) => {
-          if (!err) console.log('✅ Wood chopped!');
-        });
+    // 2. AKTIFKAN FISIKA (Jeda 15 detik setelah spawn)
+    // Ini kuncinya agar tidak dianggap packet ilegal
+    setTimeout(() => {
+      if (currentBot) {
+        currentBot.physicsEnabled = true;
+        console.log('🛡️ Physics Shield Activated - Bot can now move');
       }
+    }, 15000);
+
+    // 3. GERAK RANDOM (Jeda 25 detik)
+    setTimeout(() => {
+      setInterval(() => {
+        if (!currentBot || !currentBot.entity || !currentBot.physicsEnabled) return;
+        currentBot.setControlState('forward', true);
+        setTimeout(() => { if (currentBot) currentBot.setControlState('forward', false); }, 1000);
+        currentBot.look(Math.random() * Math.PI * 2, 0);
+      }, 20000);
     }, 25000);
+
+    // 4. HANCUR POHON (Jeda 30 detik)
+    setTimeout(() => {
+      setInterval(() => {
+        if (!currentBot || !currentBot.physicsEnabled) return;
+        const woodBlock = currentBot.findBlock({
+          matching: block => block.name.includes('log'), 
+          maxDistance: 4
+        });
+        if (woodBlock) {
+          console.log('🪓 Found wood, chopping...');
+          currentBot.dig(woodBlock, (err) => {
+            if (!err) console.log('✅ Wood chopped!');
+          });
+        }
+      }, 30000);
+    }, 30000);
   });
 
   currentBot.on('message', msg => {
@@ -103,7 +98,7 @@ function connect() {
 
   currentBot.on('end', (reason) => {
     console.log('❌ DISCONNECTED:', reason);
-    setTimeout(connect, 60000); 
+    setTimeout(connect, 30000); // Reconnect lebih cepat (30 detik)
   });
 
   currentBot.on('error', (err) => {
@@ -111,7 +106,7 @@ function connect() {
   });
 }
 
-// Web Server agar Railway tetap mendeteksi app aktif
+// Keep Railway service alive
 http.createServer((req, res) => {
   res.write('Bot is Online');
   res.end();
