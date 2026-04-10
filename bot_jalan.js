@@ -4,7 +4,7 @@ const CONFIG = {
   host: 'PATNER_SMP_CBT-WvVs.exaroton.me',
   port: 48677,
   username: 'Y.M.B_ASSITEN',
-  version: '1.21.10', 
+  version: '1.21.1', 
   auth: 'offline',
   viewDistance: 'tiny'
 };
