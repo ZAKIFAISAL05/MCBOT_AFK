@@ -1,8 +1,8 @@
 const mineflayer = require('mineflayer');
 
 const CONFIG = {
-  host: 'PATNER_SMP_CBT-WvVs.exaroton.me',
-  port: 48677,
+  host: 'Server_Partner_Cbt.aternos.me',
+  port: 38130,
   username: 'Y.M.B_ASSITEN',
   version: '1.21.1', 
   auth: 'offline',
